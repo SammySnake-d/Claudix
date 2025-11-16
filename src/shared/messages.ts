@@ -318,7 +318,7 @@ export interface ListFilesResponse {
     files: Array<{
         path: string;
         name: string;
-        type: string;
+        type: "file" | "directory";
     }>;
 }
 

@@ -204,7 +204,7 @@ const isSubmitDisabled = computed(() => {
 const slashCompletion = useCompletionDropdown({
   mode: 'inline',
   trigger: '/',
-  provider: (query) => getSlashCommands(query, runtime),
+  provider: (query, signal) => getSlashCommands(query, runtime, signal),
   toDropdownItem: commandToDropdownItem,
   onSelect: (command, query) => {
     if (query) {
@@ -229,7 +229,7 @@ const slashCompletion = useCompletionDropdown({
 const fileCompletion = useCompletionDropdown({
   mode: 'inline',
   trigger: '@',
-  provider: (query) => getFileReferences(query, runtime),
+  provider: (query, signal) => getFileReferences(query, runtime, signal),
   toDropdownItem: fileToDropdownItem,
   onSelect: (file, query) => {
     if (query) {
@@ -693,23 +693,21 @@ function handleRemoveAttachment(id: string) {
   emit('removeAttachment', id)
 }
 
-// 监听光标位置变化
+// 监听光标位置变化（仅在下拉菜单已打开时更新位置，避免重复触发请求）
 function handleSelectionChange() {
-  if (content.value && textareaRef.value) {
-    slashCompletion.evaluateQuery(content.value)
-    fileCompletion.evaluateQuery(content.value)
+  if (!content.value || !textareaRef.value) return
 
-    // 更新 dropdown 位置
-    if (slashCompletion.isOpen.value) {
-      nextTick(() => {
-        updateDropdownPosition(slashCompletion, 'queryStart')
-      })
-    }
-    if (fileCompletion.isOpen.value) {
-      nextTick(() => {
-        updateDropdownPosition(fileCompletion, 'queryStart')
-      })
-    }
+  // 仅在下拉菜单已打开时更新位置
+  // 避免重复调用 evaluateQuery（已在 handleInput 中调用）
+  if (slashCompletion.isOpen.value) {
+    nextTick(() => {
+      updateDropdownPosition(slashCompletion, 'queryStart')
+    })
+  }
+  if (fileCompletion.isOpen.value) {
+    nextTick(() => {
+      updateDropdownPosition(fileCompletion, 'queryStart')
+    })
   }
 }
 

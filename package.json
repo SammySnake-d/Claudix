@@ -116,8 +116,6 @@
     "vue-tsc": "^3.1.4"
   },
   "dependencies": {
-    "lexical": "^0.38.2",
-    "lexical-vue": "^0.14.0",
     "@anthropic-ai/claude-agent-sdk": "^0.1.42",
     "@anthropic-ai/sdk": "^0.69.0",
     "@gn8/alien-signals-vue": "^0.1.1",
@@ -126,6 +124,9 @@
     "@vscode/codicons": "^0.0.42",
     "@vueuse/core": "^14.0.0",
     "alien-signals": "^3.1.0",
+    "fuse.js": "^7.1.0",
+    "lexical": "^0.38.2",
+    "lexical-vue": "^0.14.0",
     "marked": "^17.0.0",
     "motion-v": "^1.7.4",
     "path-browserify-esm": "^1.0.6",
