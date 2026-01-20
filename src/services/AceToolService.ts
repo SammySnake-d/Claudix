@@ -95,7 +95,13 @@ export class AceToolService implements IAceToolService {
                 } else {
                     this.logService.error(`[AceToolService] Failed with code ${code}`);
                     this.logService.error(`Stderr: ${stderr}`);
-                    reject(new Error(`AceTool failed: ${stderr || 'Unknown error'}`));
+
+                    let errorMsg = `AceTool failed: ${stderr || 'Unknown error'}`;
+                    if (stderr.includes("unexpected argument '--enhance-prompt'")) {
+                        errorMsg += "\n\nHint: The 'ace-tool-rs' binary you are using does not appear to support the default '--enhance-prompt' flag. Please check the tool's documentation or help output. You can use the '${prompt}' placeholder in the extension settings (Args) to customize the command format (e.g., replace the default flags with whatever your tool expects).";
+                    }
+
+                    reject(new Error(errorMsg));
                 }
             });
 
