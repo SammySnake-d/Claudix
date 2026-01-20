@@ -81,8 +81,7 @@ export async function handleInit(
     // 获取默认工作目录
     const defaultCwd = workspaceService.getDefaultWorkspaceFolder()?.uri.fsPath || process.cwd();
 
-    // TODO: 从配置获取 openNewInTab
-    const openNewInTab = false;
+    const openNewInTab = configService.getValue<boolean>('claudix.openNewInTab') ?? false;
 
     // 获取 thinking level (默认值)
     const thinkingLevel = 'default_on';
