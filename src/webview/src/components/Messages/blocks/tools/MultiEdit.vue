@@ -39,9 +39,9 @@
                 v-for="(line, lineIndex) in patch.lines"
                 :key="lineIndex"
                 class="line-number-item"
-                :class="getDiffLineClass(line)"
+                :class="line.class"
               >
-                {{ getLineNumber(patch, lineIndex) }}
+                {{ line.displayLineNumber }}
               </div>
             </div>
           </div>
@@ -54,10 +54,10 @@
                   v-for="(line, lineIndex) in patch.lines"
                   :key="lineIndex"
                   class="diff-line"
-                  :class="getDiffLineClass(line)"
+                  :class="line.class"
                 >
-                  <span class="line-prefix">{{ getLinePrefix(line) }}</span>
-                  <span class="line-content">{{ getLineContent(line) }}</span>
+                  <span class="line-prefix">{{ line.prefix }}</span>
+                  <span class="line-content">{{ line.contentWithoutPrefix }}</span>
                 </div>
               </div>
             </div>
@@ -72,13 +72,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import path from 'path-browserify-esm';
 import ToolMessageWrapper from './common/ToolMessageWrapper.vue';
 import type { ToolContext } from '@/types/tool';
 import ToolError from './common/ToolError.vue';
 import ToolFilePath from './common/ToolFilePath.vue';
 import FileIcon from '@/components/FileIcon.vue';
+import { useDiff } from '@/composables/useDiff';
 
 interface Props {
   toolUse?: any;
@@ -102,37 +103,14 @@ const replaceAll = computed(() => {
   return props.toolUse?.input?.replace_all;
 });
 
-// 使用 ref 存储 structuredPatch,通过 watch 更新
-const structuredPatch = ref<any>(null);
+import { useDiff } from '@/composables/useDiff';
 
-// 监听 props 变化,更新 structuredPatch
-watch(
-  () => [props.toolUseResult, props.toolUse, props.toolResult],
-  () => {
-    // 如果有错误,不显示 diff
-    if (props.toolResult?.is_error) {
-      structuredPatch.value = null;
-      return;
-    }
-
-    // 优先使用 toolUseResult 中的 structuredPatch (执行后返回的真实 diff)
-    if (props.toolUseResult?.structuredPatch) {
-      structuredPatch.value = props.toolUseResult.structuredPatch;
-    }
-    // 如果有 input,生成临时 diff(权限请求阶段或实时对话执行完成后保留)
-    else if (props.toolUse?.input?.old_string && props.toolUse?.input?.new_string) {
-      structuredPatch.value = generatePatchFromInput(
-        props.toolUse.input.old_string,
-        props.toolUse.input.new_string
-      );
-    }
-  },
-  { immediate: true, deep: true }
-);
-
-const hasDiffView = computed(() => {
-  return structuredPatch.value && structuredPatch.value.length > 0;
-});
+// 使用 useDiff composable
+const {
+  processedPatches: structuredPatch,
+  hasDiffView,
+  diffStats,
+} = useDiff(props);
 
 // 判断是否为权限请求阶段(临时 diff from input)
 const isPermissionRequest = computed(() => {
@@ -155,108 +133,6 @@ function handleContentScroll() {
   }
 }
 
-// 从 old_string 和 new_string 生成简单的 patch
-function generatePatchFromInput(oldStr: string, newStr: string): any[] {
-  const oldLines = oldStr.split('\n');
-  const newLines = newStr.split('\n');
-
-  const lines: string[] = [];
-
-  // 添加删除的行
-  oldLines.forEach(line => {
-    lines.push('-' + line);
-  });
-
-  // 添加新增的行
-  newLines.forEach(line => {
-    lines.push('+' + line);
-  });
-
-  return [{
-    oldStart: 1,
-    oldLines: oldLines.length,
-    newStart: 1,
-    newLines: newLines.length,
-    lines
-  }];
-}
-
-// 计算 diff 统计
-const diffStats = computed(() => {
-  if (!structuredPatch.value) return null;
-
-  let added = 0;
-  let removed = 0;
-
-  structuredPatch.value.forEach((patch: any) => {
-    patch.lines.forEach((line: string) => {
-      if (line.startsWith('+')) added++;
-      if (line.startsWith('-')) removed++;
-    });
-  });
-
-  return { added, removed };
-});
-
-// 获取 diff 行的类型类名
-function getDiffLineClass(line: string): string {
-  if (line.startsWith('-')) return 'diff-line-delete';
-  if (line.startsWith('+')) return 'diff-line-add';
-  return 'diff-line-context';
-}
-
-// 获取行前缀
-function getLinePrefix(line: string): string {
-  if (line.startsWith('-') || line.startsWith('+')) {
-    return line[0];
-  }
-  return ' ';
-}
-
-// 获取行内容（去除前缀）
-function getLineContent(line: string): string {
-  if (line.startsWith('-') || line.startsWith('+')) {
-    return line.substring(1);
-  }
-  return line;
-}
-
-// 计算行号（删除行显示旧行号，添加行显示新行号）
-function getLineNumber(patch: any, lineIndex: number): string {
-  const currentLine = patch.lines[lineIndex];
-
-  if (currentLine.startsWith('-')) {
-    // 删除行：显示旧行号
-    let oldLine = patch.oldStart;
-    for (let i = 0; i < lineIndex; i++) {
-      const line = patch.lines[i];
-      if (!line.startsWith('+')) {
-        oldLine++;
-      }
-    }
-    return String(oldLine);
-  } else if (currentLine.startsWith('+')) {
-    // 添加行：显示新行号
-    let newLine = patch.newStart;
-    for (let i = 0; i < lineIndex; i++) {
-      const line = patch.lines[i];
-      if (!line.startsWith('-')) {
-        newLine++;
-      }
-    }
-    return String(newLine);
-  } else {
-    // 上下文行：显示新行号
-    let newLine = patch.newStart;
-    for (let i = 0; i < lineIndex; i++) {
-      const line = patch.lines[i];
-      if (!line.startsWith('-')) {
-        newLine++;
-      }
-    }
-    return String(newLine);
-  }
-}
 </script>
 
 <style scoped>
