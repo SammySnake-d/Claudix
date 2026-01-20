@@ -30,17 +30,6 @@ export default defineConfig(({ mode }) => ({
       svgoOptions: true,
     }),
     {
-      name: 'filter-mdi-fonts',
-      generateBundle(options, bundle) {
-        // 只保留 woff2 格式的 MDI 字体，删除其他格式
-        for (const fileName of Object.keys(bundle)) {
-          if (fileName.includes('materialdesignicons-webfont') && !fileName.endsWith('.woff2')) {
-            delete bundle[fileName];
-          }
-        }
-      },
-    },
-    {
       name: 'copy-svg-icons-to-media',
       apply: 'build',
       async writeBundle(options, bundle) {
@@ -75,6 +64,7 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      path: 'path-browserify-esm',
       // 使用本地的 codicon 资源替换依赖包中的资源
       '@vscode/codicons/dist/codicon.css': path.resolve(__dirname, '../../assets/codicons/codicon.css'),
       '@vscode/codicons/dist/codicon.ttf': path.resolve(__dirname, '../../assets/codicons/codicon.ttf'),
@@ -91,7 +81,9 @@ export default defineConfig(({ mode }) => ({
         entryFileNames: 'main.js',
         assetFileNames: (assetInfo) => {
           const name = assetInfo.name ?? '';
-          if (name.endsWith('.css')) return 'style.css';
+          if (name.endsWith('.css')) {
+            return 'style.css';
+          }
           if (name.includes('materialdesignicons-webfont') && name.endsWith('.woff2')) {
             return 'materialicon.woff2';
           }
