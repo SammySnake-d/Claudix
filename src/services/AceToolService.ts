@@ -96,10 +96,25 @@ export class AceToolService implements IAceToolService {
             proc.on('close', (code: number) => {
                 if (code === 0) {
                     this.logService.info('[AceToolService] Success');
+
+                    // Log the captured output for debugging
+                    if (stdout.length > 0) {
+                        this.logService.info(`[AceToolService] Stdout captured (${stdout.length} chars): ${stdout.substring(0, 500)}${stdout.length > 500 ? '...' : ''}`);
+                    } else {
+                        this.logService.warn('[AceToolService] Stdout is empty!');
+                    }
+
+                    if (stderr.length > 0) {
+                        this.logService.info(`[AceToolService] Stderr captured (${stderr.length} chars): ${stderr.substring(0, 500)}${stderr.length > 500 ? '...' : ''}`);
+                    }
+
                     resolve(stdout.trim());
                 } else {
                     this.logService.error(`[AceToolService] Failed with code ${code}`);
                     this.logService.error(`Stderr: ${stderr}`);
+                    if (stdout.length > 0) {
+                        this.logService.info(`Stdout before failure: ${stdout}`);
+                    }
 
                     // Enhanced Error Reporting
                     let errorMsg = `AceTool failed (exit code ${code}): ${stderr || 'Unknown error'}`;
