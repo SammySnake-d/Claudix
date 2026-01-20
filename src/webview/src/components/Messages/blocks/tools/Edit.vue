@@ -27,7 +27,7 @@
       <div v-if="structuredPatch && structuredPatch.length > 0" class="diff-view">
         <!-- 文件标题栏 -->
         <div v-if="filePath" class="diff-file-header">
-          <FileIcon :file-name="filePath" :size="16" class="file-icon" />
+          <FileIcon :file-name="filePath" :size="Number(16)" class="file-icon" />
           <span class="file-name">{{ fileName }}</span>
         </div>
         <!-- Diff 双列布局:行号 + 内容 -->
@@ -227,13 +227,14 @@ function getLineContent(line: string): string {
 }
 
 // 计算行号（删除行显示旧行号，添加行显示新行号）
-function getLineNumber(patch: any, lineIndex: number): string {
-  const currentLine = patch.lines[lineIndex];
+function getLineNumber(patch: any, lineIndex: number | string): string {
+  const index = Number(lineIndex);
+  const currentLine = patch.lines[index];
 
   if (currentLine.startsWith('-')) {
     // 删除行：显示旧行号
     let oldLine = patch.oldStart;
-    for (let i = 0; i < lineIndex; i++) {
+    for (let i = 0; i < index; i++) {
       const line = patch.lines[i];
       if (!line.startsWith('+')) {
         oldLine++;
@@ -243,7 +244,7 @@ function getLineNumber(patch: any, lineIndex: number): string {
   } else if (currentLine.startsWith('+')) {
     // 添加行：显示新行号
     let newLine = patch.newStart;
-    for (let i = 0; i < lineIndex; i++) {
+    for (let i = 0; i < index; i++) {
       const line = patch.lines[i];
       if (!line.startsWith('-')) {
         newLine++;
@@ -253,7 +254,7 @@ function getLineNumber(patch: any, lineIndex: number): string {
   } else {
     // 上下文行：显示新行号
     let newLine = patch.newStart;
-    for (let i = 0; i < lineIndex; i++) {
+    for (let i = 0; i < index; i++) {
       const line = patch.lines[i];
       if (!line.startsWith('-')) {
         newLine++;
