@@ -351,15 +351,6 @@
     } catch (e) {
       console.error('[ChatPage] Enhance prompt failed', e);
       // Optional: show error to user
-      try {
-        const message = e instanceof Error ? e.message : String(e);
-        await runtime.appContext.showNotification(
-          `Prompt enhancement failed: ${message}`,
-          'error'
-        );
-      } catch (inner) {
-        console.error('Failed to show notification', inner);
-      }
     } finally {
       isEnhancing.value = false;
     }
