@@ -124,20 +124,26 @@ export class SetWithKey<T> implements Set<T> {
 		return this._map.has(this.toKey(value));
 	}
 
-	*entries(): IterableIterator<[T, T]> {
-		for (const entry of this._map.values()) {
-			yield [entry, entry];
+	entries(): SetIterator<[T, T]> {
+		function* entries(this: SetWithKey<T>): IterableIterator<[T, T]> {
+			for (const entry of this._map.values()) {
+				yield [entry, entry];
+			}
 		}
+		return entries.call(this) as SetIterator<[T, T]>;
 	}
 
-	keys(): IterableIterator<T> {
+	keys(): SetIterator<T> {
 		return this.values();
 	}
 
-	*values(): IterableIterator<T> {
-		for (const entry of this._map.values()) {
-			yield entry;
+	values(): SetIterator<T> {
+		function* values(this: SetWithKey<T>): IterableIterator<T> {
+			for (const entry of this._map.values()) {
+				yield entry;
+			}
 		}
+		return values.call(this) as SetIterator<T>;
 	}
 
 	clear(): void {
@@ -148,7 +154,7 @@ export class SetWithKey<T> implements Set<T> {
 		this._map.forEach(entry => callbackfn.call(thisArg, entry, entry, this));
 	}
 
-	[Symbol.iterator](): IterableIterator<T> {
+	[Symbol.iterator](): SetIterator<T> {
 		return this.values();
 	}
 
