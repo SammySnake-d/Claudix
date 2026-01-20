@@ -96,7 +96,7 @@ const displayModels = computed(() => {
   return DEFAULT_MODELS
 })
 
-// 计算显示的模型名称
+// Calculate the displayed model name
 const selectedModelLabel = computed(() => {
   // First try to find the model in the available models list
   const model = displayModels.value.find(m => m.value === props.selectedModel)
