@@ -419,11 +419,16 @@ export class ClaudeSessionService implements IClaudeSessionService {
                 return [];
             }
 
-            const sessionMessageList = Array.from(data.messages.values())
-                .filter(msg => messageUuids.has(msg.uuid))
-                .sort((a, b) =>
-                    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-                );
+            const sessionMessageList: SessionMessage[] = [];
+            for (const uuid of messageUuids) {
+                const msg = data.messages.get(uuid);
+                if (msg) {
+                    sessionMessageList.push(msg);
+                }
+            }
+            sessionMessageList.sort((a, b) =>
+                new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            );
 
             const latestMessage = sessionMessageList[0];
             if (!latestMessage) {
