@@ -28,8 +28,18 @@
         },
         "claudix.defaultPermissionMode": {
           "type": "string",
-          "enum": ["bypassPermissions", "default", "acceptEdits", "plan"],
-          "enumItemLabels": ["Bypass Permissions", "ask", "Accept Edits", "plan"],
+          "enum": [
+            "bypassPermissions",
+            "default",
+            "acceptEdits",
+            "plan"
+          ],
+          "enumItemLabels": [
+            "Bypass Permissions",
+            "ask",
+            "Accept Edits",
+            "plan"
+          ],
           "default": "default",
           "description": "The default permission mode for new Claude sessions. Bypass Permissions: auto-execute all tools. ask: ask before each tool execution. Accept Edits: auto-accept file edits. plan: planning mode only."
         },
@@ -54,6 +64,19 @@
           },
           "default": [],
           "description": "Environment variables to set when launching Claude"
+        },
+        "claudix.aceTool.executable": {
+          "type": "string",
+          "default": "npx",
+          "description": "Executable to run ace-tool-rs (e.g. 'npx' or '/path/to/ace-tool-rs')."
+        },
+        "claudix.aceTool.args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["ace-tool-rs"],
+          "description": "Arguments for ace-tool-rs (e.g. ['ace-tool-rs', '--base-url', '...', '--token', '...'])."
         }
       }
     },
