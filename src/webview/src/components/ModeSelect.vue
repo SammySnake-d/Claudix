@@ -31,7 +31,7 @@
       <DropdownItem
         :item="{
           id: 'default',
-          label: 'ask',
+          label: 'Ask',
           icon: 'codicon-question text-[14px]!',
           checked: permissionMode === 'default',
           type: 'ask-before-mode'
@@ -55,7 +55,7 @@
       <DropdownItem
         :item="{
           id: 'plan',
-          label: 'plan',
+          label: 'Plan',
           icon: 'codicon-list-tree text-[14px]!',
           checked: permissionMode === 'plan',
           type: 'plan-mode'
