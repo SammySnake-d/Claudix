@@ -29,9 +29,9 @@
         "claudix.defaultPermissionMode": {
           "type": "string",
           "enum": ["bypassPermissions", "default", "acceptEdits", "plan"],
-          "enumItemLabels": ["Bypass", "Ask Before", "Editor Auto", "Plan"],
+          "enumItemLabels": ["Bypass Permissions", "ask", "Accept Edits", "plan"],
           "default": "default",
-          "description": "The default permission mode for new Claude sessions. Bypass: auto-execute all tools. Ask Before: ask before each tool execution. Editor Auto: auto-accept file edits. Plan: planning mode only."
+          "description": "The default permission mode for new Claude sessions. Bypass Permissions: auto-execute all tools. ask: ask before each tool execution. Accept Edits: auto-accept file edits. plan: planning mode only."
         },
         "claudix.environmentVariables": {
           "type": "array",

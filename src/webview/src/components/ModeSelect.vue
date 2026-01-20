@@ -19,7 +19,7 @@
       <DropdownItem
         :item="{
           id: 'bypassPermissions',
-          label: 'Bypass',
+          label: 'Bypass Permissions',
           icon: 'codicon-rocket text-[14px]!',
           checked: permissionMode === 'bypassPermissions',
           type: 'bypass-mode'
@@ -31,7 +31,7 @@
       <DropdownItem
         :item="{
           id: 'default',
-          label: 'Ask Before',
+          label: 'ask',
           icon: 'codicon-question text-[14px]!',
           checked: permissionMode === 'default',
           type: 'ask-before-mode'
@@ -43,7 +43,7 @@
       <DropdownItem
         :item="{
           id: 'acceptEdits',
-          label: 'Editor Auto',
+          label: 'Accept Edits',
           icon: 'codicon-edit text-[14px]!',
           checked: permissionMode === 'acceptEdits',
           type: 'editor-auto-mode'
@@ -55,7 +55,7 @@
       <DropdownItem
         :item="{
           id: 'plan',
-          label: 'Plan',
+          label: 'plan',
           icon: 'codicon-list-tree text-[14px]!',
           checked: permissionMode === 'plan',
           type: 'plan-mode'
@@ -91,15 +91,15 @@ const emit = defineEmits<Emits>()
 const selectedModeLabel = computed(() => {
   switch (props.permissionMode) {
     case 'bypassPermissions':
-      return 'Bypass'
+      return 'Bypass Permissions'
     case 'default':
-      return 'Ask Before'
+      return 'ask'
     case 'acceptEdits':
-      return 'Editor Auto'
+      return 'Accept Edits'
     case 'plan':
-      return 'Plan'
+      return 'plan'
     default:
-      return 'Ask Before'
+      return 'ask'
   }
 })
 
