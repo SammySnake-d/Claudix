@@ -751,10 +751,36 @@ onUnmounted(() => {
 defineExpose({
   /** 设置输入框内容并同步内部状态 */
   setContent(text: string) {
-    content.value = text || ''
-    if (textareaRef.value) {
-      textareaRef.value.textContent = content.value
+    const el = textareaRef.value
+    if (!el) {
+      // 如果没有 ref，仅更新状态
+      content.value = text || ''
+      return
     }
+
+    // 聚焦
+    el.focus()
+
+    // 选中所有内容
+    const range = document.createRange()
+    range.selectNodeContents(el)
+    const sel = window.getSelection()
+    sel?.removeAllRanges()
+    sel?.addRange(range)
+
+    // 使用 execCommand('insertText') 以支持撤销 (Ctrl+Z)
+    // 注意：execCommand 虽然被标记为废弃，但在富文本编辑场景下仍是支持撤销的最可靠方式
+    // 并且目前主流浏览器仍然支持
+    const success = document.execCommand('insertText', false, text || '')
+
+    if (!success) {
+      // 兜底：如果 execCommand 失败，回退到直接赋值（无撤销历史）
+      el.textContent = text || ''
+    }
+
+    // 更新内部状态（input 事件通常由 execCommand 触发，但为了保险手动同步）
+    content.value = el.textContent || ''
+
     autoResizeTextarea()
   },
   /** 聚焦到输入框 */
