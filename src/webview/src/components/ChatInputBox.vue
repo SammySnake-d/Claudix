@@ -43,6 +43,7 @@
       :disabled="isSubmitDisabled"
       :loading="isLoading"
       :selected-model="selectedModel"
+      :models="models"
       :conversation-working="conversationWorking"
       :has-input-content="!!content.trim()"
       :show-progress="showProgress"
@@ -147,6 +148,15 @@ import { useCompletionDropdown } from '../composables/useCompletionDropdown'
 import { getSlashCommands, commandToDropdownItem } from '../providers/slashCommandProvider'
 import { getFileReferences, fileToDropdownItem } from '../providers/fileReferenceProvider'
 
+/**
+ * ModelInfo from Claude Agent SDK - model information returned by supportedModels()
+ */
+interface ModelInfo {
+  value: string
+  displayName: string
+  description: string
+}
+
 interface Props {
   showProgress?: boolean
   progressPercentage?: number
@@ -154,6 +164,8 @@ interface Props {
   readonly?: boolean
   showSearch?: boolean
   selectedModel?: string
+  /** Available models from SDK's supportedModels() */
+  models?: ModelInfo[]
   conversationWorking?: boolean
   attachments?: AttachmentItem[]
   thinkingLevel?: string
@@ -179,7 +191,8 @@ const props = withDefaults(defineProps<Props>(), {
   placeholder: 'Plan, @ for context, / for commands...',
   readonly: false,
   showSearch: false,
-  selectedModel: 'claude-opus-4-5',
+  selectedModel: 'claude-sonnet-4-5-20250929',
+  models: () => [],
   conversationWorking: false,
   attachments: () => [],
   thinkingLevel: 'default_on',

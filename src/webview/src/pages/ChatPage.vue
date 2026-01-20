@@ -67,6 +67,7 @@
             :thinking-level="session?.thinkingLevel.value"
             :permission-mode="session?.permissionMode.value"
             :selected-model="session?.modelSelection.value"
+            :models="session?.claudeConfig.value?.models"
             @submit="handleSubmit"
             @stop="handleStop"
             @add-attachment="handleAddAttachment"
