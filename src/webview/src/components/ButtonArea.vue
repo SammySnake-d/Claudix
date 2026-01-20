@@ -127,8 +127,12 @@
           aria-label="Sparkle"
         >
           <span
+            v-if="isEnhancing"
+            class="codicon codicon-loading codicon-modifier-spin text-[16px]!"
+          />
+          <span
+            v-else
             class="codicon codicon-wand text-[16px]!"
-            :class="{ 'codicon-modifier-spin': isEnhancing }"
           />
         </button>
 

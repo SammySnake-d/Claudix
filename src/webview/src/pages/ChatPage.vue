@@ -60,6 +60,7 @@
             data-permission-panel="1"
           />
           <ChatInputBox
+            ref="chatInputRef"
             :show-progress="true"
             :progress-percentage="progressPercentage"
             :conversation-working="isBusy"
