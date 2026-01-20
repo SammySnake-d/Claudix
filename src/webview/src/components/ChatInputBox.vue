@@ -56,6 +56,7 @@
       @add-attachment="handleAddFiles"
       @mention="handleMention"
       @thinking-toggle="() => emit('thinkingToggle')"
+      @sparkle="() => emit('sparkle', content)"
       @mode-select="(mode) => emit('modeSelect', mode)"
       @model-select="(modelId) => emit('modelSelect', modelId)"
     />
