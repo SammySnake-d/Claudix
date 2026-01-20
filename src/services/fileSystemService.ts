@@ -149,6 +149,9 @@ export class FileSystemService implements IFileSystemService {
 	// Ripgrep 命令缓存
 	private ripgrepCommandCache: { command: string; args: string[] } | null = null;
 
+	// .gitignore 缓存
+	private gitignoreCache = new Map<string, { mtime: number; patterns: string[] }>();
+
 	// ===== 基础文件操作 =====
 
 	readFile(uri: vscode.Uri): Thenable<Uint8Array> {
@@ -189,7 +192,7 @@ export class FileSystemService implements IFileSystemService {
 		const args = ['--files', '--follow', '--hidden'];
 
 		// 2. 添加排除规则
-		const excludeGlobs = this.buildExcludePatterns();
+		const excludeGlobs = await this.buildExcludePatternsAsync();
 		for (const glob of excludeGlobs) {
 			args.push('--glob', `!${glob}`);
 		}
@@ -234,7 +237,7 @@ export class FileSystemService implements IFileSystemService {
 			: `**/*${pattern}*`;
 
 		// 自动构建排除模式
-		const excludePatterns = this.buildExcludePatterns();
+		const excludePatterns = await this.buildExcludePatternsAsync();
 		const excludeGlob = this.toExcludeGlob(excludePatterns);
 
 		const uris = await vscode.workspace.findFiles(include, excludeGlob, 100);
@@ -632,7 +635,7 @@ export class FileSystemService implements IFileSystemService {
 	 * 构建排除模式数组（从 VSCode 配置和 .gitignore 读取）
 	 * 私有方法,供 searchFilesWithRipgrep 内部使用
 	 */
-	private buildExcludePatterns(): string[] {
+	private async buildExcludePatternsAsync(): Promise<string[]> {
 		const patterns = new Set<string>([
 			'**/node_modules/**',
 			'**/.git/**',
@@ -667,15 +670,17 @@ export class FileSystemService implements IFileSystemService {
 
 			const useIgnoreFiles = searchConfig.get<boolean>('useIgnoreFiles', true);
 			if (useIgnoreFiles) {
+				const promises: Promise<string[]>[] = [];
 				const folders = vscode.workspace.workspaceFolders;
 				if (folders) {
 					for (const folder of folders) {
-						const gitignorePatterns = this.readGitignorePatterns(folder.uri.fsPath);
-						gitignorePatterns.forEach(p => patterns.add(p));
+						promises.push(this.readGitignorePatternsAsync(folder.uri.fsPath));
 					}
 				}
-				const globalPatterns = this.readGlobalGitignorePatterns();
-				globalPatterns.forEach(p => patterns.add(p));
+				promises.push(this.readGlobalGitignorePatternsAsync());
+
+				const results = await Promise.all(promises);
+				results.flat().forEach(p => patterns.add(p));
 			}
 		} catch {
 			// ignore errors
@@ -685,41 +690,43 @@ export class FileSystemService implements IFileSystemService {
 	}
 
 	/**
-	 * 读取本地 .gitignore 文件
+	 * 读取本地 .gitignore 文件 (Async + Cache)
 	 */
-	private readGitignorePatterns(root: string): string[] {
-		const entries: string[] = [];
+	private async readGitignorePatternsAsync(root: string): Promise<string[]> {
 		const localGitignore = path.join(root, '.gitignore');
-
-		try {
-			if (require('fs').existsSync(localGitignore)) {
-				const content = require('fs').readFileSync(localGitignore, 'utf8');
-				entries.push(...this.parseGitignore(content));
-			}
-		} catch {
-			// ignore errors
-		}
-
-		return entries;
+		return this.readGitignoreFileAsync(localGitignore);
 	}
 
 	/**
-	 * 读取全局 .gitignore 文件
+	 * 读取全局 .gitignore 文件 (Async + Cache)
 	 */
-	private readGlobalGitignorePatterns(): string[] {
-		const entries: string[] = [];
+	private async readGlobalGitignorePatternsAsync(): Promise<string[]> {
 		const globalGitIgnore = path.join(require('os').homedir(), '.config', 'git', 'ignore');
+		return this.readGitignoreFileAsync(globalGitIgnore);
+	}
 
+	/**
+	 * 通用异步读取 gitignore 文件并缓存
+	 */
+	private async readGitignoreFileAsync(filePath: string): Promise<string[]> {
 		try {
-			if (require('fs').existsSync(globalGitIgnore)) {
-				const content = require('fs').readFileSync(globalGitIgnore, 'utf8');
-				entries.push(...this.parseGitignore(content));
-			}
-		} catch {
-			// ignore errors
-		}
+			const fs = require('fs');
+			const stats = await fs.promises.stat(filePath);
+			const mtime = stats.mtimeMs;
 
-		return entries;
+			const cached = this.gitignoreCache.get(filePath);
+			if (cached && cached.mtime === mtime) {
+				return cached.patterns;
+			}
+
+			const content = await fs.promises.readFile(filePath, 'utf8');
+			const patterns = this.parseGitignore(content);
+
+			this.gitignoreCache.set(filePath, { mtime, patterns });
+			return patterns;
+		} catch {
+			return [];
+		}
 	}
 
 	/**
