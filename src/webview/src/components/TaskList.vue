@@ -86,12 +86,14 @@ function useSessionItem(session: Session) {
   const summary = useSignal(session.summary);
   const busy = useSignal(session.busy);
   const id = useSignal(session.sessionId);
+  const messages = useSignal(session.messages);
 
   return computed(() => ({
     id: id.value || Math.random().toString(),
     session,
     summary: summary.value || 'New Session',
-    busy: busy.value
+    busy: busy.value,
+    hasMessages: messages.value.length > 0
   }));
 }
 
@@ -104,7 +106,7 @@ const inProgressSessions = computed(() => {
 });
 
 const completedSessions = computed(() => {
-  return sessionItems.value.filter(s => !s.busy);
+  return sessionItems.value.filter(s => !s.busy && s.hasMessages);
 });
 
 function switchToSession(session: Session) {

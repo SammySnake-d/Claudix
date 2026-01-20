@@ -93,6 +93,11 @@ function activateSession(session: Session) {
 }
 
 async function createNewSession() {
+  const emptySession = openSessions.value.find(s => s.messages().length === 0 && s.messageCount() === 0);
+  if (emptySession) {
+    activateSession(emptySession);
+    return;
+  }
   await sessionStore.createSession({ isExplicit: true });
 }
 
