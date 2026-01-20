@@ -104,6 +104,17 @@ export abstract class BaseTransport {
     this.send({ type: "interrupt_claude", channelId });
   }
 
+  closeChannel(channelId: string, error?: string): void {
+    // Best-effort local cleanup to avoid hanging read loops if the host doesn't echo close_channel back.
+    const stream = this.streams.get(channelId);
+    if (stream) {
+      if (error) stream.error(new Error(error));
+      stream.done();
+      this.streams.delete(channelId);
+    }
+    this.send({ type: "close_channel", channelId, error });
+  }
+
   openFile(filePath: string, location?: any): Promise<any> {
     return this.sendRequest({ type: "open_file", filePath, location });
   }
@@ -170,6 +181,9 @@ export abstract class BaseTransport {
   }
   getSession(sessionId: string): Promise<any> {
     return this.sendRequest({ type: "get_session_request", sessionId });
+  }
+  restoreCheckpoint(sessionId: string, messageIndex: number): Promise<any> {
+    return this.sendRequest({ type: "restore_checkpoint_request", sessionId, messageIndex });
   }
   listFiles(pattern?: string, signal?: AbortSignal): Promise<any> {
     return this.sendRequest({ type: "list_files_request", pattern }, undefined, signal);

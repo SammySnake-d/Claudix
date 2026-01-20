@@ -68,6 +68,7 @@ export interface UseSessionReturn {
   getConnection: () => Promise<BaseTransport>;
   preloadConnection: () => Promise<void>;
   loadFromServer: () => Promise<void>;
+  restoreCheckpoint: (messageIndex: number) => Promise<void>;
   send: (
     input: string,
     attachments?: Array<{ fileName: string; mediaType: string; data: string }>,
@@ -128,6 +129,7 @@ export function useSession(session: Session): UseSessionReturn {
   const getConnection = session.getConnection.bind(session);
   const preloadConnection = session.preloadConnection.bind(session);
   const loadFromServer = session.loadFromServer.bind(session);
+  const restoreCheckpoint = session.restoreCheckpoint.bind(session);
   const send = session.send.bind(session);
   const launchClaude = session.launchClaude.bind(session);
   const interrupt = session.interrupt.bind(session);
@@ -172,6 +174,7 @@ export function useSession(session: Session): UseSessionReturn {
     getConnection,
     preloadConnection,
     loadFromServer,
+    restoreCheckpoint,
     send,
     launchClaude,
     interrupt,

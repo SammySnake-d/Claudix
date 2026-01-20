@@ -34,6 +34,8 @@ import type {
     ListSessionsResponse,
     GetSessionRequest,
     GetSessionResponse,
+    RestoreCheckpointRequest,
+    RestoreCheckpointResponse,
     ExecRequest,
     ExecResponse,
     ListFilesRequest,
@@ -415,6 +417,38 @@ export async function handleGetSession(
         logService.error(`Failed to get session: ${error}`);
         return {
             type: "get_session_response",
+            messages: []
+        };
+    }
+}
+
+/**
+ * Restore checkpoint（回退会话到指定消息）
+ */
+export async function handleRestoreCheckpoint(
+    request: RestoreCheckpointRequest,
+    context: HandlerContext
+): Promise<RestoreCheckpointResponse> {
+    const { logService, sessionService, workspaceService } = context;
+
+    try {
+        const cwd = workspaceService.getDefaultWorkspaceFolder()?.uri.fsPath || process.cwd();
+        const messages = await sessionService.restoreCheckpoint(
+            request.sessionId,
+            cwd,
+            request.messageIndex
+        );
+
+        return {
+            type: "restore_checkpoint_response",
+            success: true,
+            messages
+        };
+    } catch (error) {
+        logService.error(`Failed to restore checkpoint: ${error}`);
+        return {
+            type: "restore_checkpoint_response",
+            success: false,
             messages: []
         };
     }

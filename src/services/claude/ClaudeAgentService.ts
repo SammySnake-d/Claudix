@@ -66,6 +66,7 @@ import {
     handleOpenDiff,
     handleListSessions,
     handleGetSession,
+    handleRestoreCheckpoint,
     handleExec,
     handleListFiles,
     handleStatPath,
@@ -717,6 +718,9 @@ export class ClaudeAgentService implements IClaudeAgentService {
 
             case "get_session_request":
                 return handleGetSession(request, this.handlerContext);
+
+            case "restore_checkpoint_request":
+                return handleRestoreCheckpoint(request as any, this.handlerContext);
 
         // 文件操作
         case "list_files_request":

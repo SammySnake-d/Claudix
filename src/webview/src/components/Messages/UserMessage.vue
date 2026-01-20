@@ -56,6 +56,8 @@ import FileIcon from '../FileIcon.vue';
 interface Props {
   message: Message;
   context: ToolContext;
+  index?: number;
+  onRestoreCheckpoint?: (messageIndex: number) => void;
 }
 
 const props = defineProps<Props>();
@@ -160,8 +162,16 @@ function handleSaveEdit(content?: string) {
 }
 
 function handleRestore() {
-  // TODO: 实现 restore checkpoint 逻辑
-  console.log('[UserMessage] Restore checkpoint clicked');
+  const idx = props.index;
+  if (typeof idx !== 'number') {
+    console.warn('[UserMessage] Restore checkpoint clicked but index is missing');
+    return;
+  }
+  if (!props.onRestoreCheckpoint) {
+    console.warn('[UserMessage] Restore checkpoint clicked but handler is missing');
+    return;
+  }
+  props.onRestoreCheckpoint(idx);
 }
 
 // 监听键盘事件

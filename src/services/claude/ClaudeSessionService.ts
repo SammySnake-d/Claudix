@@ -14,6 +14,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
+import * as crypto from 'crypto';
 import { createDecorator } from '../../di/instantiation';
 import { ILogService } from '../logService';
 
@@ -71,6 +72,13 @@ export interface IClaudeSessionService {
      * 获取指定会话的所有消息
      */
     getSession(sessionIdOrPath: string, cwd: string): Promise<any[]>;
+
+    /**
+     * 回退到指定 checkpoint（基于当前会话 transcript 的 messageIndex）
+     *
+     * 返回回退后的 messages（格式与 getSession() 一致）
+     */
+    restoreCheckpoint(sessionIdOrPath: string, cwd: string, messageIndex: number): Promise<any[]>;
 }
 
 // ============================================================================
@@ -381,6 +389,107 @@ export class ClaudeSessionService implements IClaudeSessionService {
             return result;
         } catch (error) {
             this.logService.error(`[ClaudeSessionService] 获取会话消息失败:`, error);
+            return [];
+        }
+    }
+
+    /**
+     * 回退到指定 checkpoint（通过截断 ~/.claude/projects 下的 session jsonl 文件实现）
+     */
+    async restoreCheckpoint(sessionIdOrPath: string, cwd: string, messageIndex: number): Promise<any[]> {
+        try {
+            this.logService.info(`[ClaudeSessionService] Restore checkpoint: ${sessionIdOrPath} @ ${messageIndex}`);
+
+            let filePath = sessionIdOrPath;
+            if (!sessionIdOrPath.endsWith(".jsonl")) {
+                const projectDir = getProjectHistoryDir(cwd);
+                filePath = path.join(projectDir, `${sessionIdOrPath}.jsonl`);
+            }
+
+            const messages = await readJSONL(filePath);
+            if (messages.length === 0) {
+                return [];
+            }
+
+            // Build a map for O(1) parent lookup
+            const messageMap = new Map<string, SessionMessage>();
+            for (const msg of messages) {
+                messageMap.set(msg.uuid, msg);
+            }
+
+            // Assume the last message in the file is the leaf of the current conversation
+            let current: SessionMessage | undefined = messages[messages.length - 1];
+            const transcript: SessionMessage[] = [];
+            while (current) {
+                transcript.unshift(current);
+                if (current.parentUuid) {
+                    current = messageMap.get(current.parentUuid);
+                } else {
+                    current = undefined;
+                }
+            }
+
+            // messageIndex is based on visible transcript (same as getSession output)
+            const visible: SessionMessage[] = [];
+            for (const msg of transcript) {
+                if (convertMessage(msg)) {
+                    visible.push(msg);
+                }
+            }
+
+            if (messageIndex < 0 || messageIndex >= visible.length) {
+                throw new Error(`Invalid messageIndex: ${messageIndex} (visible=${visible.length})`);
+            }
+
+            const target = visible[messageIndex];
+
+            // We restore to the state *before* the target message (Cursor-like "put this user message back into input").
+            // So we truncate the session file to the parent of the target (or to just before the target line).
+            const targetFileIndex = messages.findIndex((m) => m.uuid === target.uuid);
+            if (targetFileIndex < 0) {
+                throw new Error(`Target message not found in session file: ${target.uuid}`);
+            }
+
+            let cutIndex = targetFileIndex - 1;
+            if (target.parentUuid) {
+                const parentFileIndex = messages.findIndex((m) => m.uuid === target.parentUuid);
+                if (parentFileIndex >= 0) {
+                    cutIndex = parentFileIndex;
+                }
+            }
+
+            let truncated = cutIndex >= 0 ? messages.slice(0, cutIndex + 1) : [];
+
+            // Avoid writing a completely empty file (which would make the session disappear in listSessions()).
+            if (truncated.length === 0) {
+                const sessionId = validateSessionId(path.basename(filePath, ".jsonl")) ?? sessionIdOrPath;
+                truncated = [
+                    {
+                        uuid: crypto.randomUUID(),
+                        sessionId,
+                        timestamp: new Date().toISOString(),
+                        type: "system",
+                        isMeta: true,
+                        cwd,
+                    } satisfies SessionMessage
+                ];
+            }
+
+            const newContent = truncated.map((m) => JSON.stringify(m)).join("\n") + "\n";
+            await fs.writeFile(filePath, newContent, "utf8");
+
+            // invalidate cache entry for this session file
+            this._sessionCache.delete(filePath);
+
+            const restored = visible
+                .slice(0, Math.max(0, messageIndex))
+                .map(convertMessage)
+                .filter(msg => !!msg);
+
+            this.logService.info(`[ClaudeSessionService] Checkpoint restored. messages=${restored.length}`);
+            return restored;
+        } catch (error) {
+            this.logService.error(`[ClaudeSessionService] Restore checkpoint failed:`, error);
             return [];
         }
     }

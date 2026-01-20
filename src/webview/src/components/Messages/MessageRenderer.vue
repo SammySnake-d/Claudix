@@ -5,6 +5,7 @@
     :is="messageComponent"
     :message="message"
     :context="context"
+    v-bind="extraProps"
   />
 </template>
 
@@ -22,9 +23,21 @@ import SlashCommandResultMessage from './SlashCommandResultMessage.vue';
 interface Props {
   message: Message;
   context: ToolContext;
+  index: number;
+  onRestoreCheckpoint?: (messageIndex: number) => void;
 }
 
 const props = defineProps<Props>();
+
+const extraProps = computed(() => {
+  if (props.message.type === 'user') {
+    return {
+      index: props.index,
+      onRestoreCheckpoint: props.onRestoreCheckpoint,
+    };
+  }
+  return {};
+});
 
 // 根据消息类型选择渲染组件
 const messageComponent = computed(() => {

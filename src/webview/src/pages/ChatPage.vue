@@ -30,6 +30,8 @@
                 :key="m?.id ?? i"
                 :message="m"
                 :context="toolContext"
+                :index="i"
+                :on-restore-checkpoint="handleRestoreCheckpoint"
               />
             <!-- </div> -->
             <div v-if="isBusy" class="spinnerRow">
@@ -257,6 +259,98 @@
     } catch (e) {
       console.error('[ChatPage] send failed', e);
     }
+  }
+
+  async function handleRestoreCheckpoint(messageIndex: number) {
+    const s = session.value;
+    if (!s) return;
+
+    try {
+      const raw = messages.value?.[messageIndex];
+      const draft = extractDraftFromMessage(raw);
+      await s.restoreCheckpoint(messageIndex);
+      // Put the restored user input back into the input box (Cursor-like behavior)
+      if (chatInputRef.value) {
+        chatInputRef.value.setContent?.(draft.text || '');
+        chatInputRef.value.focus?.();
+      }
+      attachments.value = draft.attachments;
+      await nextTick();
+      scrollToBottom();
+    } catch (e) {
+      console.error('[ChatPage] restoreCheckpoint failed', e);
+    }
+  }
+
+  function extractDraftFromMessage(message: any): { text: string; attachments: AttachmentItem[] } {
+    const content = message?.message?.content;
+    let text = '';
+    const extracted: AttachmentItem[] = [];
+
+    if (typeof content === 'string') {
+      text = content;
+      return { text, attachments: extracted };
+    }
+
+    if (!Array.isArray(content)) {
+      return { text, attachments: extracted };
+    }
+
+    const textParts: string[] = [];
+    let index = 0;
+
+    for (const wrapper of content) {
+      const block = wrapper?.content;
+      if (!block) continue;
+
+      if (block.type === 'text') {
+        if (typeof block.text === 'string') {
+          textParts.push(block.text);
+        }
+        continue;
+      }
+
+      if (block.type === 'image' && block.source?.type === 'base64') {
+        const ext = block.source.media_type?.split('/')[1] || 'png';
+        extracted.push({
+          id: `image-${index++}`,
+          fileName: `image.${ext}`,
+          mediaType: (block.source.media_type || 'image/png').toLowerCase(),
+          data: block.source.data,
+          fileSize: 0,
+        });
+        continue;
+      }
+
+      if (block.type === 'document' && block.source) {
+        const title = block.title || 'document';
+        const mediaType = (block.source.media_type || 'application/octet-stream').toLowerCase();
+
+        let data = '';
+        if (block.source.type === 'base64') {
+          data = block.source.data;
+        } else if (block.source.type === 'text') {
+          try {
+            data = typeof globalThis.btoa === 'function' ? globalThis.btoa(block.source.data) : '';
+          } catch {
+            data = '';
+          }
+        }
+
+        if (data) {
+          extracted.push({
+            id: `document-${index++}`,
+            fileName: title,
+            mediaType,
+            data,
+            fileSize: 0,
+          });
+        }
+      }
+    }
+
+    text = textParts.join(' ').trim();
+    return { text, attachments: extracted };
   }
 
   async function handleToggleThinking() {

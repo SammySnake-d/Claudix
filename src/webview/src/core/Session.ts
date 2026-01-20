@@ -193,6 +193,77 @@ export class Session {
     }
   }
 
+  async restoreCheckpoint(messageIndex: number): Promise<void> {
+    const sessionId = this.sessionId();
+    if (!sessionId) {
+      return;
+    }
+
+    const previousChannelId = this.claudeChannelId();
+
+    if (this.busy()) {
+      await this.context.showNotification?.(
+        '当前会话正在运行中，请等待结束后再回退到 checkpoint。',
+        'warning'
+      );
+      return;
+    }
+
+    const button = await this.context.showNotification?.(
+      '回退到该 checkpoint 将丢弃其后的对话历史，是否继续？',
+      'warning',
+      ['Restore', 'Cancel']
+    );
+    if (button && button !== 'Restore') {
+      return;
+    }
+
+    this.isLoading(true);
+    try {
+      const connection = await this.getConnection();
+
+      // Close the existing agent channel so the next send will start a fresh channel
+      // that picks up the restored on-disk session state.
+      if (previousChannelId) {
+        try {
+          connection.closeChannel(previousChannelId);
+        } catch {}
+      }
+
+      const response = await connection.restoreCheckpoint(sessionId, messageIndex);
+      if (!response?.success) {
+        throw new Error('restore_checkpoint_request failed');
+      }
+
+      // Reset derived state and rebuild from restored transcript
+      this.todos([]);
+      this.usageData({ totalTokens: 0, totalCost: 0, contextWindow: 200000 });
+
+      const accumulator: Message[] = [];
+      for (const raw of response?.messages ?? []) {
+        this.processMessage(raw);
+        processAndAttachMessage(accumulator, raw);
+      }
+      this.messages(accumulator);
+      this.messageCount(accumulator.length);
+      this.lastModifiedTime(Date.now());
+      this.busy(false);
+
+      // If we restored to "before the first user message", the on-disk session can become
+      // non-resumable (Claude Code reports "No conversation found"). In that case we should
+      // start a fresh conversation on next send.
+      if (accumulator.length === 0) {
+        this.sessionId(undefined);
+        this.summary(undefined);
+      }
+
+      // Ensure future messages use a fresh channel (so context matches restored transcript)
+      this.claudeChannelId(undefined);
+    } finally {
+      this.isLoading(false);
+    }
+  }
+
   async send(
     input: string,
     attachments: AttachmentPayload[] = [],

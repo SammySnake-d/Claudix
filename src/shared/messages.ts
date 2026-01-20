@@ -291,6 +291,23 @@ export interface GetSessionResponse {
 }
 
 /**
+ * Restore checkpoint (rewind conversation history)
+ *
+ * messageIndex is based on the rendered transcript order (same as get_session_response.messages).
+ */
+export interface RestoreCheckpointRequest {
+    type: "restore_checkpoint_request";
+    sessionId: string;
+    messageIndex: number;
+}
+
+export interface RestoreCheckpointResponse {
+    type: "restore_checkpoint_response";
+    success: boolean;
+    messages: any[];
+}
+
+/**
  * 执行命令
  */
 export interface ExecRequest {
@@ -624,6 +641,7 @@ export type WebViewRequest =
     | GetAssetUrisRequest
     | ListSessionsRequest
     | GetSessionRequest
+    | RestoreCheckpointRequest
     | ExecRequest
     | ListFilesRequest
     | OpenURLRequest
@@ -655,6 +673,7 @@ export type WebViewRequestResponse =
     | GetAssetUrisResponse
     | ListSessionsResponse
     | GetSessionResponse
+    | RestoreCheckpointResponse
     | ExecResponse
     | ListFilesResponse
     | OpenURLResponse
