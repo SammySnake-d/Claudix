@@ -50,6 +50,7 @@
       :progress-percentage="progressPercentage"
       :thinking-level="thinkingLevel"
       :permission-mode="permissionMode"
+      :is-enhancing="isEnhancing"
       @submit="handleSubmit"
       @stop="handleStop"
       @add-attachment="handleAddFiles"
@@ -170,6 +171,7 @@ interface Props {
   attachments?: AttachmentItem[]
   thinkingLevel?: string
   permissionMode?: PermissionMode
+  isEnhancing?: boolean
 }
 
 interface Emits {
@@ -181,6 +183,7 @@ interface Emits {
   (e: 'addAttachment', files: FileList): void
   (e: 'removeAttachment', id: string): void
   (e: 'thinkingToggle'): void
+  (e: 'sparkle', content: string): void
   (e: 'modeSelect', mode: PermissionMode): void
   (e: 'modelSelect', modelId: string): void
 }
@@ -196,7 +199,8 @@ const props = withDefaults(defineProps<Props>(), {
   conversationWorking: false,
   attachments: () => [],
   thinkingLevel: 'default_on',
-  permissionMode: 'default'
+  permissionMode: 'default',
+  isEnhancing: false
 })
 
 const emit = defineEmits<Emits>()

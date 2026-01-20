@@ -68,6 +68,7 @@
             :permission-mode="session?.permissionMode.value"
             :selected-model="session?.modelSelection.value"
             :models="session?.claudeConfig.value?.models"
+            :is-enhancing="isEnhancing"
             @submit="handleSubmit"
             @stop="handleStop"
             @add-attachment="handleAddAttachment"
@@ -75,6 +76,7 @@
             @thinking-toggle="handleToggleThinking"
             @mode-select="handleModeSelect"
             @model-select="handleModelSelect"
+            @sparkle="handleEnhancePrompt"
           />
         </div>
       <!-- </div> -->
@@ -165,9 +167,13 @@
   // DOM refs
   const containerEl = ref<HTMLDivElement | null>(null);
   const endEl = ref<HTMLDivElement | null>(null);
+  const chatInputRef = ref<InstanceType<typeof ChatInputBox> | null>(null);
 
   // 附件状态管理
   const attachments = ref<AttachmentItem[]>([]);
+
+  // Prompt enhance loading state
+  const isEnhancing = ref(false);
 
   // 记录上次消息数量，用于判断是否需要滚动
   let prevCount = 0;
@@ -324,6 +330,24 @@
     if (s) {
       // 方法已经在 useSession 中绑定，可以直接调用
       void s.interrupt();
+    }
+  }
+
+  async function handleEnhancePrompt(content: string) {
+    if (!content.trim() || !runtime) return;
+
+    isEnhancing.value = true;
+    try {
+      const connection = await runtime.connectionManager.get();
+      const enhanced = await connection.enhancePrompt(content);
+      if (enhanced && chatInputRef.value) {
+        chatInputRef.value.setContent(enhanced);
+      }
+    } catch (e) {
+      console.error('[ChatPage] Enhance prompt failed', e);
+      // Optional: show error to user
+    } finally {
+      isEnhancing.value = false;
     }
   }
 

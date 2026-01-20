@@ -69,16 +69,7 @@ export async function handleAceToolEnhance(
     request: AceToolEnhanceRequest,
     context: HandlerContext
 ): Promise<AceToolEnhanceResponse> {
-    const { logService, agentService } = context;
-    // We need to access the AceToolService directly from the container or pass it in context
-    // Since HandlerContext is generic, we can rely on DI container if it was exposed,
-    // but here we might need to extend HandlerContext or use a dirty cast if it's available in the service collection.
-    // However, looking at ClaudeAgentService, it doesn't expose AceToolService in context yet.
-    // We need to update HandlerContext type and ClaudeAgentService injection.
-
-    // TEMPORARY: Assume it will be added to context.
-    // If not, we'll get a compilation error and fix it in the next step.
-    const aceToolService = (context as any).aceToolService as IAceToolService;
+    const { logService, aceToolService } = context;
 
     if (!aceToolService) {
         throw new Error('AceToolService not available in context');
