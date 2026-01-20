@@ -68,6 +68,7 @@
             :permission-mode="session?.permissionMode.value"
             :selected-model="session?.modelSelection.value"
             :models="session?.claudeConfig.value?.models"
+            :is-enhancing="isEnhancing"
             @submit="handleSubmit"
             @stop="handleStop"
             @add-attachment="handleAddAttachment"
@@ -170,6 +171,9 @@
 
   // 附件状态管理
   const attachments = ref<AttachmentItem[]>([]);
+
+  // Prompt enhance loading state
+  const isEnhancing = ref(false);
 
   // 记录上次消息数量，用于判断是否需要滚动
   let prevCount = 0;
@@ -332,6 +336,7 @@
   async function handleEnhancePrompt(content: string) {
     if (!content.trim() || !runtime) return;
 
+    isEnhancing.value = true;
     try {
       const connection = await runtime.connectionManager.get();
       const enhanced = await connection.enhancePrompt(content);
@@ -341,6 +346,8 @@
     } catch (e) {
       console.error('[ChatPage] Enhance prompt failed', e);
       // Optional: show error to user
+    } finally {
+      isEnhancing.value = false;
     }
   }
 

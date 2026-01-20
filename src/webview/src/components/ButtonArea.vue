@@ -126,7 +126,10 @@
           @click="handleSparkleClick"
           aria-label="Sparkle"
         >
-          <span class="codicon codicon-wand text-[16px]!" />
+          <span
+            class="codicon codicon-wand text-[16px]!"
+            :class="{ 'codicon-modifier-spin': isEnhancing }"
+          />
         </button>
 
         <!-- Attach File Button -->
