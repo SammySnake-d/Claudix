@@ -263,6 +263,12 @@ export class Session {
       this.thinkingLevel(connection.config()?.thinkingLevel || 'default_on');
     }
 
+    // If current permission mode is default, use the default permission mode from config
+    const config = connection.config();
+    if (this.permissionMode() === 'default' && config?.defaultPermissionMode) {
+      this.permissionMode(config.defaultPermissionMode);
+    }
+
     const stream = connection.launchClaude(
       channelId,
       this.sessionId() ?? undefined,

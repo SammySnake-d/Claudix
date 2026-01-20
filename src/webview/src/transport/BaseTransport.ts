@@ -64,6 +64,7 @@ export abstract class BaseTransport {
       modelSetting: initResponse.state.modelSetting,
       platform: initResponse.state.platform,
       thinkingLevel: initResponse.state.thinkingLevel,
+      defaultPermissionMode: initResponse.state.defaultPermissionMode,
     } as InitResponse["state"]);
 
     const claudeState = await this.sendRequest<GetClaudeStateResponse>({
@@ -338,6 +339,7 @@ export abstract class BaseTransport {
           modelSetting: req.state.modelSetting,
           platform: req.state.platform,
           thinkingLevel: req.state.thinkingLevel,
+          defaultPermissionMode: req.state.defaultPermissionMode,
         } as InitResponse["state"]);
         this.claudeConfig(req.config);
         break;

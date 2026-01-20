@@ -26,6 +26,13 @@
           "default": "default",
           "description": "The AI model for Claude Code"
         },
+        "claudix.defaultPermissionMode": {
+          "type": "string",
+          "enum": ["bypassPermissions", "default", "acceptEdits", "plan"],
+          "enumItemLabels": ["Bypass", "Ask Before", "Editor Auto", "Plan"],
+          "default": "default",
+          "description": "The default permission mode for new Claude sessions. Bypass: auto-execute all tools. Ask Before: ask before each tool execution. Editor Auto: auto-accept file edits. Plan: planning mode only."
+        },
         "claudix.environmentVariables": {
           "type": "array",
           "items": {

@@ -18,38 +18,50 @@
     <template #content="{ close }">
       <DropdownItem
         :item="{
-          id: 'default',
-          label: 'Default',
-          icon: 'codicon-chat text-[14px]!',
-          checked: permissionMode === 'default',
-          type: 'default-mode'
+          id: 'bypassPermissions',
+          label: 'Bypass',
+          icon: 'codicon-rocket text-[14px]!',
+          checked: permissionMode === 'bypassPermissions',
+          type: 'bypass-mode'
         }"
-        :is-selected="permissionMode === 'default'"
+        :is-selected="permissionMode === 'bypassPermissions'"
         :index="0"
         @click="(item) => handleModeSelect(item, close)"
       />
       <DropdownItem
         :item="{
+          id: 'default',
+          label: 'Ask Before',
+          icon: 'codicon-question text-[14px]!',
+          checked: permissionMode === 'default',
+          type: 'ask-before-mode'
+        }"
+        :is-selected="permissionMode === 'default'"
+        :index="1"
+        @click="(item) => handleModeSelect(item, close)"
+      />
+      <DropdownItem
+        :item="{
           id: 'acceptEdits',
-          label: 'Agent',
-          icon: 'codicon-infinity text-[14px]!',
+          label: 'Editor Auto',
+          icon: 'codicon-edit text-[14px]!',
           checked: permissionMode === 'acceptEdits',
-          type: 'agent-mode'
+          type: 'editor-auto-mode'
         }"
         :is-selected="permissionMode === 'acceptEdits'"
-        :index="1"
+        :index="2"
         @click="(item) => handleModeSelect(item, close)"
       />
       <DropdownItem
         :item="{
           id: 'plan',
           label: 'Plan',
-          icon: 'codicon-todos text-[14px]!',
+          icon: 'codicon-list-tree text-[14px]!',
           checked: permissionMode === 'plan',
           type: 'plan-mode'
         }"
         :is-selected="permissionMode === 'plan'"
-        :index="2"
+        :index="3"
         @click="(item) => handleModeSelect(item, close)"
       />
     </template>
@@ -78,28 +90,32 @@ const emit = defineEmits<Emits>()
 // 计算显示的模式名称
 const selectedModeLabel = computed(() => {
   switch (props.permissionMode) {
+    case 'bypassPermissions':
+      return 'Bypass'
+    case 'default':
+      return 'Ask Before'
     case 'acceptEdits':
-      return 'Agent'
+      return 'Editor Auto'
     case 'plan':
       return 'Plan'
-    case 'default':
-      return 'Default'
     default:
-      return 'Default'
+      return 'Ask Before'
   }
 })
 
 // 计算显示的图标
 const selectedModeIcon = computed(() => {
   switch (props.permissionMode) {
-    case 'acceptEdits':
-      return 'codicon-infinity'
-    case 'plan':
-      return 'codicon-todos'
+    case 'bypassPermissions':
+      return 'codicon-rocket'
     case 'default':
-      return 'codicon-chat'
+      return 'codicon-question'
+    case 'acceptEdits':
+      return 'codicon-edit'
+    case 'plan':
+      return 'codicon-list-tree'
     default:
-      return 'codicon-chat'
+      return 'codicon-question'
   }
 })
 
