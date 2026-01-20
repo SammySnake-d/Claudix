@@ -15,6 +15,34 @@ A VSCode extension that brings Claude Code directly into your editor.
 
 Claude Code integrates Claude AI into VSCode, providing an interactive coding assistant with conversation history, tool integration, and intelligent code understanding.
 
+## Enhanced Features
+
+This version includes several enhancements over the original implementation:
+
+- **Restore Functionality**: Resume your work exactly where you left off.
+- **Queue Mode**: improved message handling with a queue system.
+- **Multi-session Mode**: Manage multiple independent conversation sessions simultaneously.
+- **Ace Enhance Integration**: Integrated support for prompt enhancement using `ace-tool`.
+
+## Configuration
+
+### Ace Enhance Setup
+
+To use the prompt enhancement feature, you need to configure the `ace-tool`.
+
+1. Download the tool from the [ace-tool-rs repository](https://github.com/missdeer/ace-tool-rs).
+2. Go to VS Code Settings and search for `claudix.aceTool`.
+3. Set the `Executable` path to your downloaded binary (or `npx` if preferred).
+4. Configure the `Args`. Ensure you use `${prompt}` as the placeholder for the text to be enhanced.
+
+**Configuration Example:**
+
+![Ace Config Example](resources/ace-config-example.png)
+
+## Recommendations
+
+- **API Management**: We recommend using `cc switch` for managing your APIs efficiently.
+
 ## Features
 
 - Interactive chat interface with Claude Code
