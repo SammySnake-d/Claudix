@@ -138,11 +138,12 @@ const searchTerm = ref('')
 
 // 智能定位计算
 const dropdownStyle = computed(() => {
+  const requestedWidth = props.width ? `${props.width}px` : undefined
   const style: any = {
     position: 'absolute',
     minWidth: '140px',
-    maxWidth: '240px',
-    width: props.width ? `${props.width}px` : 'auto',
+    maxWidth: requestedWidth ?? '240px',
+    width: requestedWidth ?? 'auto',
     zIndex: 2548
   }
 

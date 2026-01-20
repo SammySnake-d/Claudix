@@ -14,7 +14,7 @@
         >
           <div class="task-info">
             <span class="codicon codicon-loading codicon-modifier-spin" />
-            <span class="task-name" :title="session.summary">{{ session.summary }}</span>
+            <span class="task-name" :title="session.summary">{{ truncateSummary(session.summary) }}</span>
           </div>
           <button
             class="close-btn"
@@ -43,7 +43,7 @@
         >
           <div class="task-info">
             <span class="codicon codicon-check" />
-            <span class="task-name" :title="session.summary">{{ session.summary }}</span>
+            <span class="task-name" :title="session.summary">{{ truncateSummary(session.summary) }}</span>
           </div>
           <button
             class="close-btn"
@@ -114,6 +114,12 @@ function switchToSession(session: Session) {
   emit('close');
 }
 
+function truncateSummary(summary: string, maxChars = 48) {
+  const chars = Array.from(summary);
+  if (chars.length <= maxChars) return summary;
+  return `${chars.slice(0, maxChars).join('')}...`;
+}
+
 async function handleClose(session: Session) {
   // If session is busy, confirm with user
   if (session.busy()) {
@@ -142,10 +148,13 @@ async function handleClose(session: Session) {
   border: 1px solid var(--vscode-widget-border);
   border-radius: 6px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
-  width: 300px;
+  width: 100%;
+  max-width: 100%;
   max-height: 400px;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 8px 0;
+  box-sizing: border-box;
 }
 
 .task-section {
@@ -179,10 +188,13 @@ async function handleClose(session: Session) {
 .task-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
   padding: 6px 12px;
   cursor: pointer;
   transition: background-color 0.1s;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .task-item:hover {
@@ -195,13 +207,17 @@ async function handleClose(session: Session) {
   gap: 8px;
   overflow: hidden;
   flex: 1;
+  min-width: 0;
 }
 
 .task-name {
   font-size: 13px;
+  display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
 }
 
 .codicon-loading {
@@ -227,6 +243,7 @@ async function handleClose(session: Session) {
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.1s;
+  flex-shrink: 0;
 }
 
 .task-item:hover .close-btn {
