@@ -4,7 +4,6 @@
 
 import * as vscode from 'vscode';
 import * as child_process from 'child_process';
-import * as os from 'os';
 import { createDecorator } from '../di/instantiation';
 import { ILogService } from './logService';
 import { IConfigurationService } from './configurationService';
@@ -29,43 +28,49 @@ export class AceToolService implements IAceToolService {
 
         const config = vscode.workspace.getConfiguration('claudix.aceTool');
         const executable = config.get<string>('executable', 'npx');
-        const args = config.get<string[]>('args', ['ace-tool-rs']);
+        const rawArgs = config.get<string[]>('args', ['ace-tool-rs', '--enhance-prompt', '${prompt}']);
 
-        // Check if we need to clean up args
-        // If executable is NOT npx (or looks like npx), and the first arg is 'ace-tool-rs', remove it.
-        // This handles the case where user changes executable to the binary path but leaves the default args.
-        const finalCmdArgs = [...args];
+        this.logService.info(`[AceToolService] Raw Config Executable: ${executable}`);
+        this.logService.info(`[AceToolService] Raw Config Args: ${JSON.stringify(rawArgs)}`);
+
+        // 1. Detect if we are running in "npx mode" or "binary mode"
         const isNpx = executable === 'npx' || executable.endsWith('/npx') || executable.endsWith('\\npx') || executable.endsWith('npx.cmd');
 
-        if (!isNpx && finalCmdArgs.length > 0 && finalCmdArgs[0] === 'ace-tool-rs') {
-            this.logService.info('[AceToolService] Detected direct binary usage, removing redundant "ace-tool-rs" argument.');
-            finalCmdArgs.shift();
+        // 2. Prepare the initial argument list
+        let workingArgs = [...rawArgs];
+
+        // 3. Clean up "ace-tool-rs" redundancy for binary mode
+        // If we are NOT using npx, but the user copied the default args (which start with 'ace-tool-rs'),
+        // we should remove that first argument to prevent "unexpected argument 'ace-tool-rs'".
+        if (!isNpx && workingArgs.length > 0 && workingArgs[0] === 'ace-tool-rs') {
+            this.logService.info('[AceToolService] Detected direct binary usage with "ace-tool-rs" in args. Removing redundant first argument.');
+            workingArgs.shift();
         }
 
-        // Construct arguments
-        // If args contain ${prompt}, replace it.
-        // Otherwise, inject --enhance-prompt <text> smartly.
-        let finalArgs: string[];
-        const promptIndex = finalCmdArgs.findIndex(arg => arg.includes('${prompt}'));
+        // 4. Inject the prompt text
+        // Strategy:
+        // - Look for `${prompt}` placeholder and replace it.
+        // - If NO placeholder is found, append `['--enhance-prompt', text]` to the end.
+        //   (This maintains backward compatibility for simple configs, but allows full control via placeholder)
 
-        if (promptIndex !== -1) {
-            finalArgs = finalCmdArgs.map(arg => arg.replace('${prompt}', text));
+        let finalArgs: string[] = [];
+        const promptPlaceholderIndex = workingArgs.findIndex(arg => arg === '${prompt}' || arg.includes('${prompt}'));
+
+        if (promptPlaceholderIndex !== -1) {
+            // Placeholder found: Replace it with the actual text
+            finalArgs = workingArgs.map(arg => arg.replace('${prompt}', text));
+            this.logService.info('[AceToolService] Using configured "${prompt}" placeholder position.');
         } else {
-            // Smart injection:
-            // If the command starts with 'ace-tool-rs' (npx case), put flags after it.
-            // Otherwise put flags at the beginning (binary case).
-            if (finalCmdArgs.length > 0 && finalCmdArgs[0] === 'ace-tool-rs') {
-                finalArgs = [finalCmdArgs[0], '--enhance-prompt', text, ...finalCmdArgs.slice(1)];
-            } else {
-                finalArgs = ['--enhance-prompt', text, ...finalCmdArgs];
-            }
+            // No placeholder: Default fallback (Append)
+            // Note: If using npx, 'ace-tool-rs' is usually the first arg, so appending works.
+            // If using binary, appending also usually works unless the tool demands order.
+            this.logService.info('[AceToolService] No "${prompt}" placeholder found. Appending default flag "--enhance-prompt".');
+            finalArgs = [...workingArgs, '--enhance-prompt', text];
         }
 
-        this.logService.info(`[AceToolService] Running: ${executable} ${finalArgs.join(' ')}`);
+        this.logService.info(`[AceToolService] Final Execution Command: ${executable} ${finalArgs.join(' ')}`);
 
-        // Determine if we need shell execution for npx on Windows, or just finding the executable.
-        // Using shell: false is safer.
-        // If executable is 'npx' on Windows, we might need 'npx.cmd'.
+        // 5. Handle Windows npx execution quirks
         let cmd = executable;
         if (process.platform === 'win32' && cmd === 'npx') {
             cmd = 'npx.cmd';
@@ -73,7 +78,7 @@ export class AceToolService implements IAceToolService {
 
         return new Promise((resolve, reject) => {
             const proc = child_process.spawn(cmd, finalArgs, {
-                env: { ...process.env }, // inherit env
+                env: { ...process.env },
                 shell: false
             });
 
@@ -96,9 +101,15 @@ export class AceToolService implements IAceToolService {
                     this.logService.error(`[AceToolService] Failed with code ${code}`);
                     this.logService.error(`Stderr: ${stderr}`);
 
-                    let errorMsg = `AceTool failed: ${stderr || 'Unknown error'}`;
-                    if (stderr.includes("unexpected argument '--enhance-prompt'")) {
-                        errorMsg += "\n\nHint: The 'ace-tool-rs' binary you are using does not appear to support the default '--enhance-prompt' flag. Please check the tool's documentation or help output. You can use the '${prompt}' placeholder in the extension settings (Args) to customize the command format (e.g., replace the default flags with whatever your tool expects).";
+                    // Enhanced Error Reporting
+                    let errorMsg = `AceTool failed (exit code ${code}): ${stderr || 'Unknown error'}`;
+
+                    if (stderr.includes("unexpected argument")) {
+                         errorMsg += `\n\n[Configuration Hint] It looks like the tool received arguments it didn't expect.\n`;
+                         errorMsg += `1. Check your 'Claudix > Ace Tool > Args' setting.\n`;
+                         errorMsg += `2. Ensure you are using the correct flags for your version of 'ace-tool-rs'.\n`;
+                         errorMsg += `3. Use the '\${prompt}' placeholder in args to specify exactly where the prompt text goes.\n`;
+                         errorMsg += `   Example: ["--base-url", "...", "--enhance-prompt", "\${prompt}"]`;
                     }
 
                     reject(new Error(errorMsg));
