@@ -28,8 +28,18 @@
         },
         "claudix.defaultPermissionMode": {
           "type": "string",
-          "enum": ["bypassPermissions", "default", "acceptEdits", "plan"],
-          "enumItemLabels": ["Bypass Permissions", "ask", "Accept Edits", "plan"],
+          "enum": [
+            "bypassPermissions",
+            "default",
+            "acceptEdits",
+            "plan"
+          ],
+          "enumItemLabels": [
+            "Bypass Permissions",
+            "ask",
+            "Accept Edits",
+            "plan"
+          ],
           "default": "default",
           "description": "The default permission mode for new Claude sessions. Bypass Permissions: auto-execute all tools. ask: ask before each tool execution. Accept Edits: auto-accept file edits. plan: planning mode only."
         },
@@ -54,6 +64,34 @@
           },
           "default": [],
           "description": "Environment variables to set when launching Claude"
+        },
+        "claudix.aceTool.command": {
+          "type": "string",
+          "default": "npx ace-tool-rs",
+          "description": "Command to run ace-tool-rs (e.g. 'npx ace-tool-rs' or '/path/to/ace-tool-rs')."
+        },
+        "claudix.aceTool.enhancerEndpoint": {
+          "type": "string",
+          "enum": [
+            "new",
+            "claude",
+            "openai",
+            "gemini"
+          ],
+          "default": "new",
+          "description": "Endpoint selection for prompt enhancement: new (default), claude, openai, or gemini."
+        },
+        "claudix.aceTool.baseUrl": {
+          "type": "string",
+          "description": "Base URL for the enhancer API (for 'new' or third-party endpoints)."
+        },
+        "claudix.aceTool.token": {
+          "type": "string",
+          "description": "Authentication token for the enhancer API."
+        },
+        "claudix.aceTool.model": {
+          "type": "string",
+          "description": "Model name override for third-party API (optional)."
         }
       }
     },
