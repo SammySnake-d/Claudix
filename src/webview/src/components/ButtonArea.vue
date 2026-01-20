@@ -126,7 +126,10 @@
           @click="handleSparkleClick"
           aria-label="Sparkle"
         >
-          <span class="codicon codicon-wand text-[16px]!" />
+          <span
+            class="codicon codicon-wand text-[16px]!"
+            :class="{ 'codicon-modifier-spin': isEnhancing }"
+          />
         </button>
 
         <!-- Attach File Button -->
@@ -201,6 +204,7 @@ interface Props {
   progressPercentage?: number
   thinkingLevel?: string
   permissionMode?: PermissionMode
+  isEnhancing?: boolean
 }
 
 interface Emits {
@@ -225,7 +229,8 @@ const props = withDefaults(defineProps<Props>(), {
   showProgress: true,
   progressPercentage: 48.7,
   thinkingLevel: 'default_on',
-  permissionMode: 'default'
+  permissionMode: 'default',
+  isEnhancing: false
 })
 
 const emit = defineEmits<Emits>()

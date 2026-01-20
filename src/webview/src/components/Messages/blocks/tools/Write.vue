@@ -28,13 +28,15 @@
         <div class="write-scroll-container">
           <!-- 左侧行号列 -->
           <div ref="lineNumbersRef" class="write-line-numbers">
+            <div :style="{ height: paddingTop + 'px' }"></div>
             <div
-              v-for="n in lineCount"
+              v-for="n in visibleLineNumbers"
               :key="n"
               class="line-number-item"
             >
               {{ n }}
             </div>
+            <div :style="{ height: paddingBottom + 'px' }"></div>
           </div>
 
           <!-- 右侧内容列 -->
@@ -53,6 +55,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import path from 'path-browserify-esm';
+import { useElementSize } from '@vueuse/core';
 import type { ToolContext } from '@/types/tool';
 import ToolMessageWrapper from './common/ToolMessageWrapper.vue';
 import ToolError from './common/ToolError.vue';
@@ -119,10 +122,49 @@ const shouldExpand = computed(() => {
 const lineNumbersRef = ref<HTMLElement>();
 const contentRef = ref<HTMLElement>();
 
+// Virtual Scroll Logic
+const LINE_HEIGHT = 22;
+const OVERSCAN = 10; // Buffer lines
+
+const scrollTop = ref(0);
+const { height: viewportHeight } = useElementSize(contentRef);
+
+const visibleRange = computed(() => {
+  const start = Math.floor(scrollTop.value / LINE_HEIGHT);
+  // Ensure we render at least one screen worth of items even if height is 0 initially
+  const visibleCount = Math.ceil((viewportHeight.value || 400) / LINE_HEIGHT);
+
+  const effectiveStart = Math.max(0, start - OVERSCAN);
+  const effectiveEnd = Math.min(lineCount.value, start + visibleCount + OVERSCAN);
+
+  return { start: effectiveStart, end: effectiveEnd };
+});
+
+const visibleLineNumbers = computed(() => {
+  const { start, end } = visibleRange.value;
+  const numbers = [];
+  for (let i = start; i < end; i++) {
+    numbers.push(i + 1);
+  }
+  return numbers;
+});
+
+const paddingTop = computed(() => {
+  return visibleRange.value.start * LINE_HEIGHT;
+});
+
+const paddingBottom = computed(() => {
+  return Math.max(0, (lineCount.value - visibleRange.value.end) * LINE_HEIGHT);
+});
+
 // 同步行号列和内容列的垂直滚动
 function handleContentScroll() {
-  if (lineNumbersRef.value && contentRef.value) {
-    lineNumbersRef.value.scrollTop = contentRef.value.scrollTop;
+  if (contentRef.value) {
+    const top = contentRef.value.scrollTop;
+    scrollTop.value = top;
+    if (lineNumbersRef.value) {
+      lineNumbersRef.value.scrollTop = top;
+    }
   }
 }
 </script>

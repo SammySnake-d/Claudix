@@ -312,6 +312,10 @@ export function useCompletionDropdown<T>(
 
   // === 键盘事件处理 ===
   function handleKeydown(event: KeyboardEvent) {
+    // 正在输入法组合状态时，不处理键盘事件
+    if (event.isComposing) {
+      return
+    }
     navigation.handleKeydown(event)
   }
 

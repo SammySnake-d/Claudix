@@ -64,6 +64,19 @@
           },
           "default": [],
           "description": "Environment variables to set when launching Claude"
+        },
+        "claudix.aceTool.executable": {
+          "type": "string",
+          "default": "npx",
+          "description": "Executable to run ace-tool-rs (e.g. 'npx' or '/path/to/ace-tool-rs')."
+        },
+        "claudix.aceTool.args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["ace-tool-rs"],
+          "description": "Arguments for ace-tool-rs (e.g. ['ace-tool-rs', '--base-url', '...', '--token', '...'])."
         }
       }
     },

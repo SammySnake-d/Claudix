@@ -1,0 +1,10 @@
+npm warn Unknown project config "enable-pre-post-scripts". This will stop working in the next major version of npm.
+
+> claudix-vscode@0.3.9 dev:webview
+> vite --config src/webview/vite.config.ts --port 5173 --strictPort
+
+
+  VITE v7.3.1  ready in 3674 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose

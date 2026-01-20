@@ -511,6 +511,19 @@ export interface OpenClaudeInTerminalResponse {
 }
 
 /**
+ * Ace Tool Enhance Prompt
+ */
+export interface AceToolEnhanceRequest {
+    type: "ace_tool_enhance";
+    text: string;
+}
+
+export interface AceToolEnhanceResponse {
+    type: "ace_tool_enhance_response";
+    text: string;
+}
+
+/**
  * 认证 URL 通知（Extension → WebView）
  */
 // export interface AuthURLRequest {
@@ -634,7 +647,8 @@ export type WebViewRequest =
     // | LoginRequest
     // | SubmitOAuthCodeRequest
     | OpenConfigFileRequest
-    | OpenClaudeInTerminalRequest;
+    | OpenClaudeInTerminalRequest
+    | AceToolEnhanceRequest;
 
 /**
  * Extension → WebView 的所有响应类型
@@ -665,7 +679,8 @@ export type WebViewRequestResponse =
     // | LoginResponse
     // | SubmitOAuthCodeResponse
     | OpenConfigFileResponse
-    | OpenClaudeInTerminalResponse;
+    | OpenClaudeInTerminalResponse
+    | AceToolEnhanceResponse;
 
 /**
  * Extension → WebView 的所有请求类型

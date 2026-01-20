@@ -56,10 +56,40 @@ import type {
     OpenClaudeInTerminalResponse,
     CheckpointRestoreRequest,
     CheckpointRestoreResponse,
+    AceToolEnhanceRequest,
+    AceToolEnhanceResponse,
 } from '../../../shared/messages';
 import type { HandlerContext } from './types';
 import type { PermissionMode, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import { AsyncStream } from '../transport/AsyncStream';
+import { IAceToolService } from '../../AceToolService';
+
+/**
+ * Handle AceTool prompt enhancement
+ */
+export async function handleAceToolEnhance(
+    request: AceToolEnhanceRequest,
+    context: HandlerContext
+): Promise<AceToolEnhanceResponse> {
+    const { logService, aceToolService } = context;
+
+    if (!aceToolService) {
+        throw new Error('AceToolService not available in context');
+    }
+
+    try {
+        const enhancedText = await aceToolService.enhancePrompt(request.text);
+        return {
+            type: "ace_tool_enhance_response",
+            text: enhancedText
+        };
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        logService.error(`[handleAceToolEnhance] Failed: ${errorMsg}`);
+        throw error;
+    }
+}
+
 /**
  * 初始化请求
  */

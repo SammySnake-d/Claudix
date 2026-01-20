@@ -169,14 +169,14 @@ function handleSaveEdit(content?: string) {
 }
 
 async function handleRestore() {
-  const sessionId = props.message.session_id;
-  if (!sessionId) {
-    console.error('[UserMessage] Restore failed: No session_id (message UUID) available');
+  const messageId = props.message.uuid;
+  if (!messageId) {
+    console.error('[UserMessage] Restore failed: No message UUID available');
     return;
   }
 
-  console.log('[UserMessage] Restoring checkpoint to message:', sessionId);
-  await activeSession.value?.restoreCheckpoint(sessionId);
+  console.log('[UserMessage] Restoring checkpoint to message:', messageId);
+  await activeSession.value?.restoreCheckpoint(messageId);
 }
 
 // 监听键盘事件

@@ -28,6 +28,7 @@ import { IClaudeSessionService } from './ClaudeSessionService';
 import { AsyncStream, ITransport } from './transport';
 import { HandlerContext } from './handlers/types';
 import { IWebViewService } from '../webViewService';
+import { IAceToolService } from '../AceToolService';
 
 // 消息类型导入
 import type {
@@ -72,6 +73,7 @@ import {
     handleOpenURL,
     handleOpenConfigFile,
     handleCheckpointRestore, // Added handler
+    handleAceToolEnhance,
     // handleOpenClaudeInTerminal,
     // handleGetAuthStatus,
     // handleLogin,
@@ -225,7 +227,8 @@ export class ClaudeAgentService implements IClaudeAgentService {
         @ITabsAndEditorsService private readonly tabsAndEditorsService: ITabsAndEditorsService,
         @IClaudeSdkService private readonly sdkService: IClaudeSdkService,
         @IClaudeSessionService private readonly sessionService: IClaudeSessionService,
-        @IWebViewService private readonly webViewService: IWebViewService
+        @IWebViewService private readonly webViewService: IWebViewService,
+        @IAceToolService private readonly aceToolService: IAceToolService
     ) {
         // 构建 Handler 上下文
         this.handlerContext = {
@@ -240,6 +243,7 @@ export class ClaudeAgentService implements IClaudeAgentService {
             sdkService: this.sdkService,
             agentService: this,  // 自身引用
             webViewService: this.webViewService,
+            aceToolService: this.aceToolService
         };
     }
 
@@ -709,6 +713,9 @@ export class ClaudeAgentService implements IClaudeAgentService {
 
             case "open_config_file":
                 return handleOpenConfigFile(request, this.handlerContext);
+
+            case "ace_tool_enhance":
+                return handleAceToolEnhance(request, this.handlerContext);
 
             // 会话管理
             case "list_sessions_request":
