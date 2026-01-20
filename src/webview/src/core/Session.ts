@@ -263,9 +263,10 @@ export class Session {
       this.thinkingLevel(connection.config()?.thinkingLevel || 'default_on');
     }
 
-    // 如果当前权限模式是默认值，使用配置中的默认权限模式
-    if (this.permissionMode() === 'default' && connection.config()?.defaultPermissionMode) {
-      this.permissionMode(connection.config()!.defaultPermissionMode!);
+    // If current permission mode is default, use the default permission mode from config
+    const config = connection.config();
+    if (this.permissionMode() === 'default' && config?.defaultPermissionMode) {
+      this.permissionMode(config.defaultPermissionMode);
     }
 
     const stream = connection.launchClaude(
