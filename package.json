@@ -65,33 +65,18 @@
           "default": [],
           "description": "Environment variables to set when launching Claude"
         },
-        "claudix.aceTool.command": {
+        "claudix.aceTool.executable": {
           "type": "string",
-          "default": "npx ace-tool-rs",
-          "description": "Command to run ace-tool-rs (e.g. 'npx ace-tool-rs' or '/path/to/ace-tool-rs')."
+          "default": "npx",
+          "description": "Executable to run ace-tool-rs (e.g. 'npx' or '/path/to/ace-tool-rs')."
         },
-        "claudix.aceTool.enhancerEndpoint": {
-          "type": "string",
-          "enum": [
-            "new",
-            "claude",
-            "openai",
-            "gemini"
-          ],
-          "default": "new",
-          "description": "Endpoint selection for prompt enhancement: new (default), claude, openai, or gemini."
-        },
-        "claudix.aceTool.baseUrl": {
-          "type": "string",
-          "description": "Base URL for the enhancer API (for 'new' or third-party endpoints)."
-        },
-        "claudix.aceTool.token": {
-          "type": "string",
-          "description": "Authentication token for the enhancer API."
-        },
-        "claudix.aceTool.model": {
-          "type": "string",
-          "description": "Model name override for third-party API (optional)."
+        "claudix.aceTool.args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["ace-tool-rs"],
+          "description": "Arguments for ace-tool-rs (e.g. ['ace-tool-rs', '--base-url', '...', '--token', '...'])."
         }
       }
     },
