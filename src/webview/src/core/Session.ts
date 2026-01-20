@@ -363,6 +363,8 @@ export class Session {
     try {
         const success = await connection.restoreCheckpoint(channelId, messageId);
         if (success) {
+            // Wait a moment for backend to persist changes to disk
+            await new Promise(resolve => setTimeout(resolve, 1000));
             // 如果恢复成功，重新加载会话以同步历史
             await this.loadFromServer();
         }
