@@ -216,7 +216,9 @@ export class ClaudeSdkService implements IClaudeSdkService {
         this.logService.info(`  - Path: ${cliPath}`);
 
         // 检查 CLI 是否存在
-        if (!fs.existsSync(cliPath)) {
+        try {
+            await fs.promises.access(cliPath);
+        } catch (e) {
             this.logService.error(`❌ Claude CLI not found at: ${cliPath}`);
             throw new Error(`Claude CLI not found at: ${cliPath}`);
         }
@@ -224,7 +226,7 @@ export class ClaudeSdkService implements IClaudeSdkService {
 
         // 检查文件权限
         try {
-            const stats = fs.statSync(cliPath);
+            const stats = await fs.promises.stat(cliPath);
             this.logService.info(`  - File size: ${stats.size} bytes`);
             this.logService.info(`  - Is executable: ${(stats.mode & fs.constants.X_OK) !== 0}`);
         } catch (e) {
