@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import { InstantiationService } from '../src/di/instantiationService';
 import { ServiceCollection } from '../src/di/serviceCollection';
 import { registerServices } from '../src/services/serviceRegistry';
-import { ILogService } from '../src/services/log/logService';
+import { ILogService } from '../src/services/logService';
 
 describe('Services', () => {
 	it('should register and retrieve log service', () => {
