@@ -170,13 +170,16 @@ function handleSaveEdit(content?: string) {
 
 async function handleRestore() {
   const messageId = props.message.uuid;
+  console.log('[UserMessage] handleRestore triggered. UUID:', messageId);
+
   if (!messageId) {
     console.error('[UserMessage] Restore failed: No message UUID available');
     return;
   }
 
-  console.log('[UserMessage] Restoring checkpoint to message:', messageId);
+  console.log('[UserMessage] Calling activeSession.restoreCheckpoint...');
   await activeSession.value?.restoreCheckpoint(messageId);
+  console.log('[UserMessage] restoreCheckpoint call completed');
 }
 
 // 监听键盘事件

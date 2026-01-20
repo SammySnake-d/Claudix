@@ -920,6 +920,7 @@ export class ClaudeAgentService implements IClaudeAgentService {
      * 恢复检查点
      */
     async restoreCheckpoint(channelId: string, messageId: string): Promise<void> {
+        this.logService.info(`[ClaudeAgentService] restoreCheckpoint called for ${messageId} on channel ${channelId}`);
         const channel = this.channels.get(channelId);
         if (!channel) {
             this.logService.warn(`[restoreCheckpoint] Channel ${channelId} not found`);
@@ -938,7 +939,7 @@ export class ClaudeAgentService implements IClaudeAgentService {
             }
         };
 
-        this.logService.info(`[restoreCheckpoint] Sending rewind_code request for message ${messageId}`);
+        this.logService.info(`[restoreCheckpoint] Enqueuing control_request (rewind_code) for message ${messageId}`);
         channel.in.enqueue(controlRequest);
     }
 }

@@ -373,10 +373,11 @@ export async function handleCheckpointRestore(
     const { agentService, logService } = context;
     const { channelId, messageId } = request;
 
-    logService.info(`[handleCheckpointRestore] Requesting restore for channel ${channelId} at message ${messageId}`);
+    logService.info(`[handleCheckpointRestore] Received request: channelId=${channelId}, messageId=${messageId}`);
 
     try {
         await agentService.restoreCheckpoint(channelId, messageId);
+        logService.info(`[handleCheckpointRestore] agentService.restoreCheckpoint completed (enqueued)`);
         return {
             type: "checkpoint_restore_response",
             success: true

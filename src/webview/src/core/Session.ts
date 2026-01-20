@@ -353,23 +353,28 @@ export class Session {
   }
 
   async restoreCheckpoint(messageId: string): Promise<void> {
+    console.log('[Session] restoreCheckpoint called for:', messageId);
     const channelId = this.claudeChannelId();
     if (!channelId) {
+        console.warn('[Session] restoreCheckpoint aborted: No active channelId');
         return;
     }
     const connection = await this.getConnection();
     this.busy(true);
     this.isRestoring(true);
     try {
+        console.log('[Session] Sending restore request to connection...');
         const success = await connection.restoreCheckpoint(channelId, messageId);
+        console.log('[Session] connection.restoreCheckpoint result:', success);
         if (success) {
             // Wait a moment for backend to persist changes to disk
             await new Promise(resolve => setTimeout(resolve, 1000));
             // 如果恢复成功，重新加载会话以同步历史
+            console.log('[Session] Reloading from server...');
             await this.loadFromServer();
         }
     } catch (e) {
-        console.error('Failed to restore checkpoint:', e);
+        console.error('[Session] Failed to restore checkpoint:', e);
         this.error(e instanceof Error ? e.message : String(e));
     } finally {
         this.busy(false);
