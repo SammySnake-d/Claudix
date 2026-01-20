@@ -23,7 +23,7 @@
               @click.stop="handleRestore"
               title="Restore checkpoint"
             >
-              <span class="codicon codicon-restore"></span>
+              <span class="codicon codicon-history"></span>
             </button>
           </div>
         </div>
