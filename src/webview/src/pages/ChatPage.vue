@@ -75,6 +75,7 @@
             @thinking-toggle="handleToggleThinking"
             @mode-select="handleModeSelect"
             @model-select="handleModelSelect"
+            @sparkle="handleEnhancePrompt"
           />
         </div>
       <!-- </div> -->
@@ -165,6 +166,7 @@
   // DOM refs
   const containerEl = ref<HTMLDivElement | null>(null);
   const endEl = ref<HTMLDivElement | null>(null);
+  const chatInputRef = ref<InstanceType<typeof ChatInputBox> | null>(null);
 
   // 附件状态管理
   const attachments = ref<AttachmentItem[]>([]);
@@ -324,6 +326,21 @@
     if (s) {
       // 方法已经在 useSession 中绑定，可以直接调用
       void s.interrupt();
+    }
+  }
+
+  async function handleEnhancePrompt(content: string) {
+    if (!content.trim() || !runtime) return;
+
+    try {
+      const connection = await runtime.connectionManager.get();
+      const enhanced = await connection.enhancePrompt(content);
+      if (enhanced && chatInputRef.value) {
+        chatInputRef.value.setContent(enhanced);
+      }
+    } catch (e) {
+      console.error('[ChatPage] Enhance prompt failed', e);
+      // Optional: show error to user
     }
   }
 

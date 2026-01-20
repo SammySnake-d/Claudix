@@ -181,6 +181,7 @@ interface Emits {
   (e: 'addAttachment', files: FileList): void
   (e: 'removeAttachment', id: string): void
   (e: 'thinkingToggle'): void
+  (e: 'sparkle', content: string): void
   (e: 'modeSelect', mode: PermissionMode): void
   (e: 'modelSelect', modelId: string): void
 }

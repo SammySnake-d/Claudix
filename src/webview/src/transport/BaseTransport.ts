@@ -201,6 +201,9 @@ export abstract class BaseTransport {
   getAssetUris(): Promise<any> {
     return this.sendRequest({ type: "get_asset_uris" });
   }
+  enhancePrompt(text: string): Promise<string> {
+    return this.sendRequest({ type: "ace_tool_enhance", text }).then((r: any) => r.text);
+  }
 
   showNotification(
     message: string,

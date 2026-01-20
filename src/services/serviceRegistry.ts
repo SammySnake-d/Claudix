@@ -23,6 +23,7 @@ import { IWebViewService, WebViewService } from './webViewService';
 import { IClaudeSdkService, ClaudeSdkService } from './claude/ClaudeSdkService';
 import { IClaudeSessionService, ClaudeSessionService } from './claude/ClaudeSessionService';
 import { IClaudeAgentService, ClaudeAgentService } from './claude/ClaudeAgentService';
+import { IAceToolService, AceToolService } from './AceToolService';
 
 /**
  * Register all services to the builder
@@ -61,6 +62,7 @@ export function registerServices(
 	// Claude services
 	builder.define(IClaudeSdkService, new SyncDescriptor(ClaudeSdkService, [context]));
 	builder.define(IClaudeSessionService, new SyncDescriptor(ClaudeSessionService));
+	builder.define(IAceToolService, new SyncDescriptor(AceToolService));
 	builder.define(IClaudeAgentService, new SyncDescriptor(ClaudeAgentService));
 }
 
@@ -78,5 +80,6 @@ export {
 	IWebViewService,
 	IClaudeSdkService,
 	IClaudeSessionService,
-	IClaudeAgentService
+	IClaudeAgentService,
+	IAceToolService
 };
