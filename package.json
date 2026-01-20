@@ -76,7 +76,7 @@
             "type": "string"
           },
           "default": ["ace-tool-rs"],
-          "description": "Arguments for ace-tool-rs (e.g. ['ace-tool-rs', '--base-url', '...', '--token', '...'])."
+          "description": "Arguments for ace-tool-rs (e.g. ['ace-tool-rs', '--base-url', '...', '--token', '...']). Note: If you specify the direct path to the binary in 'executable', the first argument 'ace-tool-rs' will be automatically ignored if present."
         }
       }
     },

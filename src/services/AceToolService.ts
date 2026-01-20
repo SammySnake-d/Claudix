@@ -31,9 +31,20 @@ export class AceToolService implements IAceToolService {
         const executable = config.get<string>('executable', 'npx');
         const args = config.get<string[]>('args', ['ace-tool-rs']);
 
+        // Check if we need to clean up args
+        // If executable is NOT npx (or looks like npx), and the first arg is 'ace-tool-rs', remove it.
+        // This handles the case where user changes executable to the binary path but leaves the default args.
+        const finalCmdArgs = [...args];
+        const isNpx = executable === 'npx' || executable.endsWith('/npx') || executable.endsWith('\\npx') || executable.endsWith('npx.cmd');
+
+        if (!isNpx && finalCmdArgs.length > 0 && finalCmdArgs[0] === 'ace-tool-rs') {
+            this.logService.info('[AceToolService] Detected direct binary usage, removing redundant "ace-tool-rs" argument.');
+            finalCmdArgs.shift();
+        }
+
         // Construct arguments
         // <executable> ...<args> --enhance-prompt "<text>"
-        const finalArgs = [...args, '--enhance-prompt', text];
+        const finalArgs = [...finalCmdArgs, '--enhance-prompt', text];
 
         this.logService.info(`[AceToolService] Running: ${executable} ${finalArgs.join(' ')}`);
 
