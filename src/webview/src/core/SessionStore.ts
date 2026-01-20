@@ -12,6 +12,7 @@ export interface PermissionEvent {
 
 export class SessionStore {
   readonly sessions = signal<Session[]>([]);
+  readonly openSessions = signal<Session[]>([]);
   readonly activeSession = signal<Session | undefined>(undefined);
   readonly permissionRequested = new EventEmitter<PermissionEvent>();
 
@@ -113,6 +114,7 @@ export class SessionStore {
     const session = new Session(() => this.getConnection(), this.context, options);
 
     this.sessions([session, ...this.sessions()]);
+    this.openSessions([...this.openSessions(), session]);
     this.activeSession(session);
 
     this.attachPermissionListener(session);
@@ -172,7 +174,38 @@ export class SessionStore {
   }
 
   setActiveSession(session: Session | undefined): void {
+    if (session && !this.openSessions().includes(session)) {
+      this.openSessions([...this.openSessions(), session]);
+    }
     this.activeSession(session);
+  }
+
+  openSession(session: Session): void {
+    const current = this.openSessions();
+    if (!current.includes(session)) {
+      this.openSessions([...current, session]);
+    }
+    this.activeSession(session);
+  }
+
+  closeSession(session: Session): void {
+    const current = this.openSessions();
+    const index = current.indexOf(session);
+    if (index !== -1) {
+      const newSessions = [...current];
+      newSessions.splice(index, 1);
+      this.openSessions(newSessions);
+
+      if (this.activeSession() === session) {
+        if (newSessions.length > 0) {
+          const newIndex = Math.min(index, newSessions.length - 1);
+          this.activeSession(newSessions[newIndex]);
+        } else {
+          // If all tabs are closed, create a new session
+          void this.createSession({ isExplicit: false });
+        }
+      }
+    }
   }
 
   dispose(): void {

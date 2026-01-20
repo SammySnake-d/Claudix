@@ -1,19 +1,7 @@
 <template>
   <div class="chat-page">
-    <!-- 顶部标题栏 -->
-    <div class="chat-header">
-      <div class="header-left">
-        <button class="menu-btn" @click="$emit('switchToSessions')">
-          <span class="codicon codicon-menu"></span>
-        </button>
-        <h2 class="chat-title">{{ title }}</h2>
-      </div>
-      <div class="header-right">
-        <button class="new-chat-btn" title="新开对话" @click="createNew">
-          <span class="codicon codicon-plus"></span>
-        </button>
-      </div>
-    </div>
+    <!-- 顶部 Tab 栏 -->
+    <TabBar @history="$emit('switchToSessions')" />
 
     <!-- 主体：消息容器 -->
     <div class="main">
@@ -100,6 +88,7 @@
   import ClaudeWordmark from '../components/ClaudeWordmark.vue';
   import RandomTip from '../components/RandomTip.vue';
   import MessageRenderer from '../components/Messages/MessageRenderer.vue';
+  import TabBar from '../components/TabBar.vue';
   import { useKeybinding } from '../utils/useKeybinding';
   import { useSignal } from '@gn8/alien-signals-vue';
   import type { PermissionMode } from '@anthropic-ai/claude-agent-sdk';
