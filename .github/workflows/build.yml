@@ -1,7 +1,9 @@
-name: Build
+name: Build and Package Extension
 
 on:
-  
+  # 1. 允许手动点击按钮触发
+  workflow_dispatch: 
+  # 保持原有的 PR 触发
   pull_request:
     branches: [main, master]
 
@@ -39,6 +41,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      # 建议添加类型检查（根据你提供的命令列表）
+      - name: Type Check
+        run: pnpm run typecheck:all
+
+      # 这里保留你原本的构建步骤，确保 dist 目录生成
       - name: Build webview
         run: pnpm run build:webview
 
@@ -46,11 +53,18 @@ jobs:
         run: pnpm run build:extension
 
       - name: Run tests
+        # 如果是 headless 环境，可能需要 xvfb-run，如果测试报错请检查这里
         run: pnpm run test
 
-      - name: Upload build artifacts
+      # 2. 新增步骤：打包 VSIX
+      - name: Package VSIX
+        run: pnpm package
+
+      # 3. 修改上传步骤：上传 .vsix 文件
+      - name: Upload VSIX Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dist
-          path: dist/
+          name: claudix
+          # 上传所有 .vsix 文件（通常在根目录）
+          path: "*.vsix"
           retention-days: 7
