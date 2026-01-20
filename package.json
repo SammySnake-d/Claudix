@@ -36,9 +36,9 @@
           ],
           "enumItemLabels": [
             "Bypass Permissions",
-            "ask",
+            "Ask",
             "Accept Edits",
-            "plan"
+            "Plan"
           ],
           "default": "default",
           "description": "The default permission mode for new Claude sessions. Bypass Permissions: auto-execute all tools. ask: ask before each tool execution. Accept Edits: auto-accept file edits. plan: planning mode only."
