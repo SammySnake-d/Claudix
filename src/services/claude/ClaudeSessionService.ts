@@ -216,136 +216,6 @@ function generateSummary(messages: SessionMessage[]): string {
 // ClaudeSessionService 实现
 // ============================================================================
 
-/**
- * 会话数据容器
- */
-interface SessionData {
-    sessionMessages: Map<string, Set<string>>;
-    messages: Map<string, SessionMessage>;
-    summaries: Map<string, string>;
-}
-
-/**
- * 加载项目的会话历史
- */
-async function loadProjectData(cwd: string): Promise<SessionData> {
-    const projectDir = getProjectHistoryDir(cwd);
-
-    let files: string[];
-    try {
-        files = await fs.readdir(projectDir);
-    } catch {
-        return {
-            sessionMessages: new Map(),
-            messages: new Map(),
-            summaries: new Map()
-        };
-    }
-
-    const fileStats = await Promise.all(
-        files.map(async file => {
-            const filePath = path.join(projectDir, file);
-            const stat = await fs.stat(filePath);
-            return { name: filePath, stat };
-        })
-    );
-
-    const jsonlFiles = fileStats
-        .filter(file => file.stat.isFile() && file.name.endsWith(".jsonl"))
-        .sort((a, b) => a.stat.mtime.getTime() - b.stat.mtime.getTime());
-
-    const loadedData = await Promise.all(
-        jsonlFiles.map(async file => {
-            const sessionId = validateSessionId(path.basename(file.name, ".jsonl"));
-
-            if (!sessionId) {
-                return {
-                    sessionId,
-                    sessionMessages: new Map<string, SessionMessage>(),
-                    summaries: new Map<string, string>()
-                };
-            }
-
-            const messages = new Map<string, SessionMessage>();
-            const summaries = new Map<string, string>();
-
-            try {
-                for (const msg of await readJSONL(file.name)) {
-                    if (
-                        msg.type === "user" ||
-                        msg.type === "assistant" ||
-                        msg.type === "attachment" ||
-                        msg.type === "system"
-                    ) {
-                        messages.set(msg.uuid, msg);
-                    } else if (msg.type === "summary" && msg.leafUuid) {
-                        summaries.set(msg.leafUuid, msg.summary!);
-                    }
-                }
-            } catch {
-            }
-
-            return { sessionId, sessionMessages: messages, summaries };
-        })
-    );
-
-    const sessionMessages = new Map<string, Set<string>>();
-    const allMessages = new Map<string, SessionMessage>();
-    const allSummaries = new Map<string, string>();
-
-    for (const { sessionId, sessionMessages: messages, summaries } of loadedData) {
-        if (!sessionId) continue;
-
-        sessionMessages.set(sessionId, new Set(messages.keys()));
-
-        for (const [uuid, msg] of messages.entries()) {
-            allMessages.set(uuid, msg);
-        }
-
-        for (const [uuid, summary] of summaries.entries()) {
-            allSummaries.set(uuid, summary);
-        }
-    }
-
-    return {
-        sessionMessages,
-        messages: allMessages,
-        summaries: allSummaries
-    };
-}
-
-/**
- * 获取所有会话的对话链
- */
-function getTranscripts(data: SessionData): SessionMessage[][] {
-    const allMessages = [...data.messages.values()];
-
-    const referencedUuids = new Set(
-        allMessages.map(msg => msg.parentUuid).filter(Boolean) as string[]
-    );
-
-    const rootMessages = allMessages.filter(msg => !referencedUuids.has(msg.uuid));
-
-    return rootMessages
-        .map(msg => getTranscript(msg, data))
-        .filter(transcript => transcript.length > 0);
-}
-
-/**
- * 重建完整的对话链
- */
-function getTranscript(message: SessionMessage, data: SessionData): SessionMessage[] {
-    const result: SessionMessage[] = [];
-    let current: SessionMessage | undefined = message;
-
-    while (current) {
-        result.unshift(current);
-        current = current.parentUuid ? data.messages.get(current.parentUuid) : undefined;
-    }
-
-    return result;
-}
-
 
 // ============================================================================
 // ClaudeSessionService 实现
@@ -357,10 +227,55 @@ function getTranscript(message: SessionMessage, data: SessionData): SessionMessa
 export class ClaudeSessionService implements IClaudeSessionService {
     readonly _serviceBrand: undefined;
 
+    private _sessionCache = new Map<string, { mtime: number, info: SessionInfo }>();
+
     constructor(
         @ILogService private readonly logService: ILogService
     ) {
         this.logService.info('[ClaudeSessionService] 已初始化');
+    }
+
+    /**
+     * Scan a single session file to extract metadata without full parsing/loading into memory if possible.
+     * Note: Currently we read full file to be safe but we don't store messages in global cache.
+     * Future optimization: implement a streaming reader that stops after summary and counts lines.
+     */
+    private async _scanSessionInfo(filePath: string): Promise<SessionInfo | null> {
+        const stat = await fs.stat(filePath);
+        const messages = await readJSONL(filePath);
+        if (messages.length === 0) {
+            return null;
+        }
+
+        const sessionId = validateSessionId(path.basename(filePath, ".jsonl"));
+        if (!sessionId) {
+            return null;
+        }
+
+        // Find last message (leaf)
+        // In linear logs, it is usually the last one.
+        // We assume linear session for optimization.
+        const lastMessage = messages[messages.length - 1];
+        const firstMessage = messages[0];
+
+        // Check for specific summary message
+        let summary = generateSummary(messages);
+        for (const msg of messages) {
+            if (msg.type === "summary" && msg.leafUuid === lastMessage.uuid) {
+                summary = msg.summary || summary;
+                break;
+            }
+        }
+
+        return {
+            lastModified: stat.mtime.getTime(),
+            messageCount: messages.length,
+            isSidechain: firstMessage.isSidechain,
+            id: sessionId,
+            summary: summary,
+            isCurrentWorkspace: true,
+            worktree: firstMessage.cwd // Approximate
+        };
     }
 
     /**
@@ -369,25 +284,46 @@ export class ClaudeSessionService implements IClaudeSessionService {
     async listSessions(cwd: string): Promise<SessionInfo[]> {
         try {
             this.logService.info(`[ClaudeSessionService] 加载会话列表: ${cwd}`);
+            const projectDir = getProjectHistoryDir(cwd);
 
-            const data = await loadProjectData(cwd);
+            let files: string[];
+            try {
+                files = await fs.readdir(projectDir);
+            } catch {
+                return [];
+            }
 
-            const transcripts = getTranscripts(data);
+            const sessions: SessionInfo[] = [];
 
-            const sessions = transcripts.map(transcript => {
-                const lastMessage = transcript[transcript.length - 1];
-                const firstMessage = transcript[0];
-                const summary = generateSummary(transcript);
+            await Promise.all(files.map(async file => {
+                if (!file.endsWith('.jsonl')) {
+                    return;
+                }
+                const filePath = path.join(projectDir, file);
 
-                return {
-                    lastModified: new Date(lastMessage.timestamp).getTime(),
-                    messageCount: transcript.length,
-                    isSidechain: firstMessage.isSidechain,
-                    id: lastMessage.sessionId,
-                    summary: data.summaries.get(lastMessage.uuid) || summary,
-                    isCurrentWorkspace: true
-                };
-            });
+                try {
+                    const stat = await fs.stat(filePath);
+                    const cacheKey = filePath;
+                    const cached = this._sessionCache.get(cacheKey);
+
+                    if (cached && cached.mtime === stat.mtime.getTime()) {
+                        sessions.push(cached.info);
+                        return;
+                    }
+
+                    // Cache miss or stale
+                    const info = await this._scanSessionInfo(filePath);
+                    if (info) {
+                        this._sessionCache.set(cacheKey, { mtime: stat.mtime.getTime(), info });
+                        sessions.push(info);
+                    }
+                } catch (e) {
+                    // Ignore error for single file
+                }
+            }));
+
+            // Sort by last modified desc
+            sessions.sort((a, b) => b.lastModified - a.lastModified);
 
             this.logService.info(`[ClaudeSessionService] 找到 ${sessions.length} 个会话`);
             return sessions;
@@ -404,38 +340,40 @@ export class ClaudeSessionService implements IClaudeSessionService {
         try {
             this.logService.info(`[ClaudeSessionService] 获取会话消息: ${sessionIdOrPath}`);
 
-            if (sessionIdOrPath.endsWith(".jsonl")) {
-                const messages: any[] = [];
-                for (const msg of await readJSONL(sessionIdOrPath)) {
-                    messages.push(msg);
-                }
-                return messages;
+            let filePath = sessionIdOrPath;
+            if (!sessionIdOrPath.endsWith(".jsonl")) {
+                const projectDir = getProjectHistoryDir(cwd);
+                filePath = path.join(projectDir, `${sessionIdOrPath}.jsonl`);
             }
 
-            const data = await loadProjectData(cwd);
+            const messages = await readJSONL(filePath);
 
-            const messageUuids = data.sessionMessages.get(sessionIdOrPath);
-            if (!messageUuids) {
+            if (messages.length === 0) {
                 return [];
             }
 
-            const sessionMessageList: SessionMessage[] = [];
-            for (const uuid of messageUuids) {
-                const msg = data.messages.get(uuid);
-                if (msg) {
-                    sessionMessageList.push(msg);
+            // Build a map for O(1) parent lookup
+            const messageMap = new Map<string, SessionMessage>();
+            for (const msg of messages) {
+                messageMap.set(msg.uuid, msg);
+            }
+
+            // Assume the last message in the file is the leaf of the current conversation
+            // This is standard for append-only logs.
+            let current: SessionMessage | undefined = messages[messages.length - 1];
+            const transcript: SessionMessage[] = [];
+
+            // Walk back up the tree
+            while (current) {
+                transcript.unshift(current);
+                if (current.parentUuid) {
+                    current = messageMap.get(current.parentUuid);
+                } else {
+                    current = undefined;
                 }
             }
-            sessionMessageList.sort((a, b) =>
-                new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-            );
 
-            const latestMessage = sessionMessageList[0];
-            if (!latestMessage) {
-                return [];
-            }
-
-            const result = getTranscript(latestMessage, data)
+            const result = transcript
                 .map(convertMessage)
                 .filter(msg => !!msg);
 
