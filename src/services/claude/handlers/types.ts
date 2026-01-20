@@ -15,7 +15,6 @@ import { IClaudeSessionService } from '../ClaudeSessionService';
 import { IClaudeSdkService } from '../ClaudeSdkService';
 import { IClaudeAgentService } from '../ClaudeAgentService';
 import { IWebViewService } from '../../webViewService';
-import { IAceToolService } from '../../AceToolService';
 
 /**
  * Handler 上下文
@@ -33,7 +32,6 @@ export interface HandlerContext {
     sdkService: IClaudeSdkService;
     agentService: IClaudeAgentService;
     webViewService: IWebViewService;
-    aceToolService?: IAceToolService;
 }
 
 /**

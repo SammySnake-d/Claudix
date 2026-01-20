@@ -201,7 +201,6 @@ interface Props {
   progressPercentage?: number
   thinkingLevel?: string
   permissionMode?: PermissionMode
-  isEnhancing?: boolean
 }
 
 interface Emits {
@@ -226,8 +225,7 @@ const props = withDefaults(defineProps<Props>(), {
   showProgress: true,
   progressPercentage: 48.7,
   thinkingLevel: 'default_on',
-  permissionMode: 'default',
-  isEnhancing: false
+  permissionMode: 'default'
 })
 
 const emit = defineEmits<Emits>()
