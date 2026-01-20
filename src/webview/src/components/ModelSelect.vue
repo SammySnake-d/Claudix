@@ -16,36 +16,17 @@
 
     <template #content="{ close }">
       <DropdownItem
+        v-for="(model, index) in displayModels"
+        :key="model.value"
         :item="{
-          id: 'claude-opus-4-5',
-          label: 'Opus 4.5',
-          checked: selectedModel === 'claude-opus-4-5',
+          id: model.value,
+          label: model.displayName,
+          description: model.description,
+          checked: selectedModel === model.value,
           type: 'model'
         }"
-        :is-selected="selectedModel === 'claude-opus-4-5'"
-        :index="0"
-        @click="(item) => handleModelSelect(item, close)"
-      />
-      <DropdownItem
-        :item="{
-          id: 'claude-sonnet-4-5',
-          label: 'Sonnet 4.5',
-          checked: selectedModel === 'claude-sonnet-4-5',
-          type: 'model'
-        }"
-        :is-selected="selectedModel === 'claude-sonnet-4-5'"
-        :index="1"
-        @click="(item) => handleModelSelect(item, close)"
-      />
-      <DropdownItem
-        :item="{
-          id: 'claude-haiku-4-5',
-          label: 'Haiku 4.5',
-          checked: selectedModel === 'claude-haiku-4-5',
-          type: 'model'
-        }"
-        :is-selected="selectedModel === 'claude-haiku-4-5'"
-        :index="2"
+        :is-selected="selectedModel === model.value"
+        :index="index"
         @click="(item) => handleModelSelect(item, close)"
       />
     </template>
@@ -56,8 +37,44 @@
 import { computed } from 'vue'
 import { DropdownTrigger, DropdownItem, type DropdownItemData } from './Dropdown'
 
+/**
+ * ModelInfo from Claude Agent SDK - model information returned by supportedModels()
+ */
+interface ModelInfo {
+  /** Model identifier to use in API calls */
+  value: string
+  /** Human-readable display name */
+  displayName: string
+  /** Description of the model's capabilities */
+  description: string
+}
+
+/**
+ * Default fallback models when SDK doesn't return any models
+ * These match the model IDs expected by the Claude Agent SDK
+ */
+const DEFAULT_MODELS: ModelInfo[] = [
+  {
+    value: 'claude-sonnet-4-5-20250929',
+    displayName: 'Sonnet 4.5',
+    description: 'Best for most tasks - fast, intelligent, and cost-effective'
+  },
+  {
+    value: 'claude-opus-4-5-20251101',
+    displayName: 'Opus 4.5',
+    description: 'Most capable model for complex tasks'
+  },
+  {
+    value: 'claude-haiku-4-5-20251001',
+    displayName: 'Haiku 4.5',
+    description: 'Fastest model for simple tasks'
+  }
+]
+
 interface Props {
   selectedModel?: string
+  /** Available models from SDK's supportedModels() */
+  models?: ModelInfo[]
 }
 
 interface Emits {
@@ -65,23 +82,37 @@ interface Emits {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  selectedModel: 'claude-opus-4-5'
+  selectedModel: 'claude-sonnet-4-5-20250929',
+  models: () => []
 })
 
 const emit = defineEmits<Emits>()
 
-// 计算显示的模型名称
-const selectedModelLabel = computed(() => {
-  switch (props.selectedModel) {
-    case 'claude-opus-4-5':
-      return 'Opus 4.5'
-    case 'claude-sonnet-4-5':
-      return 'Sonnet 4.5'
-    case 'claude-haiku-4-5':
-      return 'Haiku 4.5'
-    default:
-      return 'Opus 4.5'
+// Use SDK models if available, otherwise fall back to default models
+const displayModels = computed(() => {
+  if (props.models && props.models.length > 0) {
+    return props.models
   }
+  return DEFAULT_MODELS
+})
+
+// Calculate the displayed model name
+const selectedModelLabel = computed(() => {
+  // First try to find the model in the available models list
+  const model = displayModels.value.find(m => m.value === props.selectedModel)
+  if (model) {
+    return model.displayName
+  }
+
+  // Fallback: extract display name from model ID
+  // e.g., "claude-sonnet-4-5-20250929" -> "Sonnet 4.5"
+  const modelId = props.selectedModel || ''
+  if (modelId.includes('opus')) return 'Opus'
+  if (modelId.includes('sonnet')) return 'Sonnet'
+  if (modelId.includes('haiku')) return 'Haiku'
+
+  // Ultimate fallback
+  return displayModels.value[0]?.displayName || 'Sonnet 4.5'
 })
 
 function handleModelSelect(item: DropdownItemData, close: () => void) {
