@@ -1,5 +1,8 @@
 <template>
   <div class="chat-page">
+    <!-- Restore Progress Modal -->
+    <RestoreCheckpointModal v-if="isRestoring" />
+
     <!-- 顶部标题栏 -->
     <div class="chat-header">
       <div class="header-left">
@@ -97,6 +100,7 @@
   import ClaudeWordmark from '../components/ClaudeWordmark.vue';
   import RandomTip from '../components/RandomTip.vue';
   import MessageRenderer from '../components/Messages/MessageRenderer.vue';
+  import RestoreCheckpointModal from '../components/RestoreCheckpointModal.vue';
   import { useKeybinding } from '../utils/useKeybinding';
   import { useSignal } from '@gn8/alien-signals-vue';
   import type { PermissionMode } from '@anthropic-ai/claude-agent-sdk';
@@ -134,6 +138,7 @@
   const title = computed(() => session.value?.summary.value || 'New Conversation');
   const messages = computed<any[]>(() => session.value?.messages.value ?? []);
   const isBusy = computed(() => session.value?.busy.value ?? false);
+  const isRestoring = computed(() => session.value?.isRestoring.value ?? false);
   const permissionMode = computed(
     () => session.value?.permissionMode.value ?? 'default'
   );

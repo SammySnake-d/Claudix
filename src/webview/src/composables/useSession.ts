@@ -32,6 +32,7 @@ export interface UseSessionReturn {
   connection: Ref<BaseTransport | undefined>;
   busy: Ref<boolean>;
   isLoading: Ref<boolean>;
+  isRestoring: Ref<boolean>;
   error: Ref<string | undefined>;
   sessionId: Ref<string | undefined>;
   isExplicit: Ref<boolean>;
@@ -80,6 +81,7 @@ export interface UseSessionReturn {
   setPermissionMode: (mode: PermissionMode, applyToConnection?: boolean) => Promise<boolean>;
   setModel: (model: ModelOption) => Promise<boolean>;
   setThinkingLevel: (level: string) => Promise<void>;
+  restoreCheckpoint: (messageId: string) => Promise<void>;
   getMcpServers: () => Promise<any>;
   openConfigFile: (configType: string) => Promise<void>;
   onPermissionRequested: (callback: (request: PermissionRequest) => void) => () => void;
@@ -100,6 +102,7 @@ export function useSession(session: Session): UseSessionReturn {
   const connection = useSignal(session.connection);
   const busy = useSignal(session.busy);
   const isLoading = useSignal(session.isLoading);
+  const isRestoring = useSignal(session.isRestoring);
   const error = useSignal(session.error);
   const sessionId = useSignal(session.sessionId);
   const isExplicit = useSignal(session.isExplicit);
@@ -136,6 +139,7 @@ export function useSession(session: Session): UseSessionReturn {
   const setPermissionMode = session.setPermissionMode.bind(session);
   const setModel = session.setModel.bind(session);
   const setThinkingLevel = session.setThinkingLevel.bind(session);
+  const restoreCheckpoint = session.restoreCheckpoint.bind(session);
   const getMcpServers = session.getMcpServers.bind(session);
   const openConfigFile = session.openConfigFile.bind(session);
   const onPermissionRequested = session.onPermissionRequested.bind(session);
@@ -146,6 +150,7 @@ export function useSession(session: Session): UseSessionReturn {
     connection,
     busy,
     isLoading,
+    isRestoring,
     error,
     sessionId,
     isExplicit,
@@ -180,6 +185,7 @@ export function useSession(session: Session): UseSessionReturn {
     setPermissionMode,
     setModel,
     setThinkingLevel,
+    restoreCheckpoint,
     getMcpServers,
     openConfigFile,
     onPermissionRequested,

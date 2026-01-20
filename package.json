@@ -28,8 +28,18 @@
         },
         "claudix.defaultPermissionMode": {
           "type": "string",
-          "enum": ["bypassPermissions", "default", "acceptEdits", "plan"],
-          "enumItemLabels": ["Bypass Permissions", "ask", "Accept Edits", "plan"],
+          "enum": [
+            "bypassPermissions",
+            "default",
+            "acceptEdits",
+            "plan"
+          ],
+          "enumItemLabels": [
+            "Bypass Permissions",
+            "ask",
+            "Accept Edits",
+            "plan"
+          ],
           "default": "default",
           "description": "The default permission mode for new Claude sessions. Bypass Permissions: auto-execute all tools. ask: ask before each tool execution. Accept Edits: auto-accept file edits. plan: planning mode only."
         },
@@ -110,8 +120,8 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.17",
-    "@types/node": "^24.10.1",
-    "@types/vscode": "^1.98.0",
+    "@types/node": "^24.10.9",
+    "@types/vscode": "^1.108.1",
     "@typescript-eslint/eslint-plugin": "^8.48.1",
     "@typescript-eslint/parser": "^8.48.1",
     "@vitejs/plugin-vue": "^6.0.2",

@@ -70,6 +70,7 @@ export class Session {
 
   readonly busy = signal(false);
   readonly isLoading = signal(false);
+  readonly isRestoring = signal(false);
   readonly error = signal<string | undefined>(undefined);
   readonly sessionId = signal<string | undefined>(undefined);
   readonly isExplicit = signal(false);
@@ -349,6 +350,29 @@ export class Session {
 
     const connection = await this.getConnection();
     await connection.setThinkingLevel(channelId, level);
+  }
+
+  async restoreCheckpoint(messageId: string): Promise<void> {
+    const channelId = this.claudeChannelId();
+    if (!channelId) {
+        return;
+    }
+    const connection = await this.getConnection();
+    this.busy(true);
+    this.isRestoring(true);
+    try {
+        const success = await connection.restoreCheckpoint(channelId, messageId);
+        if (success) {
+            // 如果恢复成功，重新加载会话以同步历史
+            await this.loadFromServer();
+        }
+    } catch (e) {
+        console.error('Failed to restore checkpoint:', e);
+        this.error(e instanceof Error ? e.message : String(e));
+    } finally {
+        this.busy(false);
+        this.isRestoring(false);
+    }
   }
 
   async getMcpServers(): Promise<any> {

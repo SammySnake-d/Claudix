@@ -46,12 +46,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref, computed, nextTick, onMounted, onUnmounted, inject } from 'vue';
 import type { Message } from '../../models/Message';
 import type { ToolContext } from '../../types/tool';
 import type { AttachmentItem } from '../../types/attachment';
 import ChatInputBox from '../ChatInputBox.vue';
 import FileIcon from '../FileIcon.vue';
+import { useSessionStore } from '../../composables/useSessionStore';
+import { RuntimeKey } from '../../composables/runtimeContext';
 
 interface Props {
   message: Message;
@@ -64,6 +66,13 @@ const isEditing = ref(false);
 const chatInputRef = ref<InstanceType<typeof ChatInputBox>>();
 const containerRef = ref<HTMLElement>();
 const attachments = ref<AttachmentItem[]>([]);
+
+// Correctly access activeSession via RuntimeKey injection
+const runtime = inject(RuntimeKey);
+if (!runtime) {
+  throw new Error('[UserMessage] Runtime not found');
+}
+const { activeSession } = useSessionStore(runtime.sessionStore);
 
 // 显示内容（纯文本）
 const displayContent = computed(() => {
@@ -159,9 +168,15 @@ function handleSaveEdit(content?: string) {
   cancelEdit();
 }
 
-function handleRestore() {
-  // TODO: 实现 restore checkpoint 逻辑
-  console.log('[UserMessage] Restore checkpoint clicked');
+async function handleRestore() {
+  const sessionId = props.message.session_id;
+  if (!sessionId) {
+    console.error('[UserMessage] Restore failed: No session_id (message UUID) available');
+    return;
+  }
+
+  console.log('[UserMessage] Restoring checkpoint to message:', sessionId);
+  await activeSession.value?.restoreCheckpoint(sessionId);
 }
 
 // 监听键盘事件

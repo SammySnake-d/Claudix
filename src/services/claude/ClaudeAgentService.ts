@@ -71,6 +71,7 @@ import {
     handleOpenContent,
     handleOpenURL,
     handleOpenConfigFile,
+    handleCheckpointRestore, // Added handler
     // handleOpenClaudeInTerminal,
     // handleGetAuthStatus,
     // handleLogin,
@@ -171,6 +172,11 @@ export interface IClaudeAgentService {
      * 设置模型
      */
     setModel(channelId: string, model: string): Promise<void>;
+
+    /**
+     * 恢复检查点
+     */
+    restoreCheckpoint(channelId: string, messageId: string): Promise<void>;
 
     /**
      * 关闭
@@ -711,6 +717,9 @@ export class ClaudeAgentService implements IClaudeAgentService {
             case "get_session_request":
                 return handleGetSession(request, this.handlerContext);
 
+            case "checkpoint_restore":
+                return handleCheckpointRestore(request as any, this.handlerContext);
+
         // 文件操作
         case "list_files_request":
             return handleListFiles(request, this.handlerContext);
@@ -898,5 +907,31 @@ export class ClaudeAgentService implements IClaudeAgentService {
         await this.configService.updateValue('claudix.selectedModel', model);
 
         this.logService.info(`[setModel] Set channel ${channelId} to model: ${model}`);
+    }
+
+    /**
+     * 恢复检查点
+     */
+    async restoreCheckpoint(channelId: string, messageId: string): Promise<void> {
+        const channel = this.channels.get(channelId);
+        if (!channel) {
+            this.logService.warn(`[restoreCheckpoint] Channel ${channelId} not found`);
+            throw new Error(`Channel ${channelId} not found`);
+        }
+
+        // 构造 control_request
+        // 注意：这里我们使用 SDK 暴露的隐藏能力，直接构造 control_request 消息
+        // 根据 cli.js 的分析：else if(y.request.subtype==="rewind_code"){...}
+        const controlRequest: any = {
+            type: "control_request",
+            request_id: this.generateId(),
+            request: {
+                subtype: "rewind_code",
+                user_message_id: messageId
+            }
+        };
+
+        this.logService.info(`[restoreCheckpoint] Sending rewind_code request for message ${messageId}`);
+        channel.in.enqueue(controlRequest);
     }
 }

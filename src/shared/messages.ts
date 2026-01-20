@@ -223,6 +223,20 @@ export interface SetThinkingLevelResponse {
 }
 
 /**
+ * 恢复检查点请求
+ */
+export interface CheckpointRestoreRequest {
+    type: "checkpoint_restore";
+    channelId: string;
+    messageId: string;
+}
+
+export interface CheckpointRestoreResponse {
+    type: "checkpoint_restore_response";
+    success: boolean;
+}
+
+/**
  * 获取 Claude 状态
  */
 export interface GetClaudeStateRequest {
@@ -602,6 +616,7 @@ export type WebViewRequest =
     | SetPermissionModeRequest
     | SetModelRequest
     | SetThinkingLevelRequest
+    | CheckpointRestoreRequest
     | GetCurrentSelectionRequest
     | ShowNotificationRequest
     | NewConversationTabRequest
@@ -632,6 +647,7 @@ export type WebViewRequestResponse =
     | SetPermissionModeResponse
     | SetModelResponse
     | SetThinkingLevelResponse
+    | CheckpointRestoreResponse
     | GetCurrentSelectionResponse
     | ShowNotificationResponse
     | NewConversationTabResponse

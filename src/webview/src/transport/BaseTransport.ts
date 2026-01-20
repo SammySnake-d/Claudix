@@ -165,6 +165,13 @@ export abstract class BaseTransport {
     await this.sendRequest({ type: "set_thinking_level", channelId, thinkingLevel }, channelId);
   }
 
+  async restoreCheckpoint(channelId: string, messageId: string): Promise<boolean> {
+    const response = await this.sendRequest(
+      { type: "checkpoint_restore", channelId, messageId }
+    );
+    return !!(response as any).success;
+  }
+
   listSessions(): Promise<any> {
     return this.sendRequest({ type: "list_sessions_request" });
   }

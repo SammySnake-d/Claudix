@@ -54,6 +54,8 @@ import type {
     OpenConfigFileResponse,
     OpenClaudeInTerminalRequest,
     OpenClaudeInTerminalResponse,
+    CheckpointRestoreRequest,
+    CheckpointRestoreResponse,
 } from '../../../shared/messages';
 import type { HandlerContext } from './types';
 import type { PermissionMode, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
@@ -329,6 +331,35 @@ export async function handleOpenDiff(
         type: "open_diff_response",
         newEdits: request.edits
     };
+}
+
+/**
+ * 恢复检查点
+ */
+export async function handleCheckpointRestore(
+    request: CheckpointRestoreRequest,
+    context: HandlerContext
+): Promise<CheckpointRestoreResponse> {
+    const { agentService, logService } = context;
+    const { channelId, messageId } = request;
+
+    logService.info(`[handleCheckpointRestore] Requesting restore for channel ${channelId} at message ${messageId}`);
+
+    try {
+        await agentService.restoreCheckpoint(channelId, messageId);
+        return {
+            type: "checkpoint_restore_response",
+            success: true
+        };
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        logService.error(`[handleCheckpointRestore] Failed to restore checkpoint: ${errorMsg}`);
+        // 返回成功为 false，但不要抛出异常，让前端处理错误
+        return {
+            type: "checkpoint_restore_response",
+            success: false
+        };
+    }
 }
 
 /**
