@@ -43,8 +43,23 @@ export class AceToolService implements IAceToolService {
         }
 
         // Construct arguments
-        // <executable> ...<args> --enhance-prompt "<text>"
-        const finalArgs = [...finalCmdArgs, '--enhance-prompt', text];
+        // If args contain ${prompt}, replace it.
+        // Otherwise, inject --enhance-prompt <text> smartly.
+        let finalArgs: string[];
+        const promptIndex = finalCmdArgs.findIndex(arg => arg.includes('${prompt}'));
+
+        if (promptIndex !== -1) {
+            finalArgs = finalCmdArgs.map(arg => arg.replace('${prompt}', text));
+        } else {
+            // Smart injection:
+            // If the command starts with 'ace-tool-rs' (npx case), put flags after it.
+            // Otherwise put flags at the beginning (binary case).
+            if (finalCmdArgs.length > 0 && finalCmdArgs[0] === 'ace-tool-rs') {
+                finalArgs = [finalCmdArgs[0], '--enhance-prompt', text, ...finalCmdArgs.slice(1)];
+            } else {
+                finalArgs = ['--enhance-prompt', text, ...finalCmdArgs];
+            }
+        }
 
         this.logService.info(`[AceToolService] Running: ${executable} ${finalArgs.join(' ')}`);
 

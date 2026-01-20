@@ -76,7 +76,7 @@
             "type": "string"
           },
           "default": ["ace-tool-rs"],
-          "description": "Arguments for ace-tool-rs (e.g. ['ace-tool-rs', '--base-url', '...', '--token', '...']). Note: If you specify the direct path to the binary in 'executable', the first argument 'ace-tool-rs' will be automatically ignored if present."
+          "description": "Arguments for ace-tool-rs. You can use '${prompt}' as a placeholder for the text to be enhanced. If present, the default '--enhance-prompt' flag will be omitted. Example: ['--enhance-prompt', '${prompt}']. Note: If you specify the direct path to the binary in 'executable', the first argument 'ace-tool-rs' will be automatically ignored if present."
         }
       }
     },
