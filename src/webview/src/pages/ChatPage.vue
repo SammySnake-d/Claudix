@@ -49,6 +49,12 @@
             :on-resolve="handleResolvePermission"
             data-permission-panel="1"
           />
+          <MessageQueueList
+            :queued-messages="queuedMessages"
+            :visible="queuedMessages.length > 0"
+            @remove="handleRemoveFromQueue"
+            @send-now="handleSendNow"
+          />
           <ChatInputBox
             ref="chatInputRef"
             :show-progress="true"
@@ -61,6 +67,7 @@
             :models="session?.claudeConfig.value?.models"
             :is-enhancing="isEnhancing"
             @submit="handleSubmit"
+            @queue-message="handleQueueMessage"
             @stop="handleStop"
             @add-attachment="handleAddAttachment"
             @remove-attachment="handleRemoveAttachment"
@@ -84,7 +91,9 @@
   import type { ToolContext } from '../types/tool';
   import type { AttachmentItem } from '../types/attachment';
   import { convertFileToAttachment } from '../types/attachment';
+  import type { QueuedMessage } from '../types/queue';
   import ChatInputBox from '../components/ChatInputBox.vue';
+  import MessageQueueList from '../components/MessageQueueList.vue';
   import PermissionRequestModal from '../components/PermissionRequestModal.vue';
   import Spinner from '../components/Messages/WaitingIndicator.vue';
   import ClaudeWordmark from '../components/ClaudeWordmark.vue';
@@ -163,6 +172,9 @@
 
   // 附件状态管理
   const attachments = ref<AttachmentItem[]>([]);
+
+  // 消息队列管理
+  const queuedMessages = ref<QueuedMessage[]>([]);
 
   // Prompt enhance loading state
   const isEnhancing = ref(false);
@@ -260,6 +272,70 @@
       console.error('[ChatPage] send failed', e);
     }
   }
+
+  function handleQueueMessage(content: string) {
+    const trimmed = (content || '').trim();
+    if (!trimmed && attachments.value.length === 0) return;
+
+    // 添加到队列
+    queuedMessages.value.push({
+      id: Date.now().toString() + Math.random().toString().slice(2),
+      content: trimmed,
+      attachments: [...attachments.value],
+      timestamp: Date.now()
+    });
+
+    // 清空当前附件，准备下一条消息
+    attachments.value = [];
+  }
+
+  function handleRemoveFromQueue(id: string) {
+    queuedMessages.value = queuedMessages.value.filter(m => m.id !== id);
+  }
+
+  async function handleSendNow(id: string) {
+    const index = queuedMessages.value.findIndex(m => m.id === id);
+    if (index === -1) return;
+
+    // 移动到队列头部
+    const [msg] = queuedMessages.value.splice(index, 1);
+    queuedMessages.value.unshift(msg);
+
+    // 如果当前正在忙碌，尝试中断
+    if (isBusy.value && session.value) {
+      // 中断后，isBusy 会变为 false，触发 watcher 处理队列
+      void session.value.interrupt();
+    } else {
+      // 如果空闲，直接处理队列
+      void processQueue();
+    }
+  }
+
+  async function processQueue() {
+    // 确保有会话，且队列不为空，且当前不忙
+    if (!session.value || queuedMessages.value.length === 0 || isBusy.value) return;
+
+    const msg = queuedMessages.value.shift();
+    if (!msg) return;
+
+    try {
+      await session.value.send(msg.content, msg.attachments);
+    } catch (e) {
+      console.error('[ChatPage] failed to send queued message', e);
+      // 可选：发送失败是否放回队列？或者提示错误？
+      // 目前策略：失败则丢弃，避免死循环
+    }
+  }
+
+  // 监听 busy 状态，当变为空闲时处理队列
+  watch(isBusy, (newBusy) => {
+    if (!newBusy) {
+      // 使用 nextTick 确保状态完全更新
+      nextTick(() => {
+        processQueue();
+      });
+    }
+  });
 
   async function handleRestoreCheckpoint(messageIndex: number) {
     const s = session.value;
