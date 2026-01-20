@@ -75,6 +75,9 @@ export async function handleInit(
     // 获取模型设置
     const modelSetting = configService.getValue<string>('claudix.selectedModel') || 'default';
 
+    // 获取默认权限模式
+    const defaultPermissionMode = configService.getValue<PermissionMode>('claudix.defaultPermissionMode') || 'default';
+
     // 获取默认工作目录
     const defaultCwd = workspaceService.getDefaultWorkspaceFolder()?.uri.fsPath || process.cwd();
 
@@ -92,7 +95,8 @@ export async function handleInit(
             // authStatus,
             modelSetting,
             platform: process.platform,
-            thinkingLevel
+            thinkingLevel,
+            defaultPermissionMode
         }
     };
 }

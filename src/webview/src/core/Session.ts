@@ -263,6 +263,11 @@ export class Session {
       this.thinkingLevel(connection.config()?.thinkingLevel || 'default_on');
     }
 
+    // 如果当前权限模式是默认值，使用配置中的默认权限模式
+    if (this.permissionMode() === 'default' && connection.config()?.defaultPermissionMode) {
+      this.permissionMode(connection.config()!.defaultPermissionMode!);
+    }
+
     const stream = connection.launchClaude(
       channelId,
       this.sessionId() ?? undefined,
