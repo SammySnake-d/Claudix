@@ -174,7 +174,14 @@
   const attachments = ref<AttachmentItem[]>([]);
 
   // 消息队列管理
-  const queuedMessages = ref<QueuedMessage[]>([]);
+  const queuedMessages = computed<QueuedMessage[]>({
+    get: () => session.value?.queuedMessages.value ?? [],
+    set: (val) => {
+      if (session.value) {
+        session.value.queuedMessages.value = val;
+      }
+    }
+  });
 
   // Prompt enhance loading state
   const isEnhancing = ref(false);
@@ -274,37 +281,50 @@
   }
 
   function handleQueueMessage(content: string) {
+    const s = session.value;
+    if (!s) return;
+
     const trimmed = (content || '').trim();
     if (!trimmed && attachments.value.length === 0) return;
 
     // 添加到队列
-    queuedMessages.value.push({
-      id: Date.now().toString() + Math.random().toString().slice(2),
-      content: trimmed,
-      attachments: [...attachments.value],
-      timestamp: Date.now()
-    });
+    s.queuedMessages.value = [
+      ...s.queuedMessages.value,
+      {
+        id: Date.now().toString() + Math.random().toString().slice(2),
+        content: trimmed,
+        attachments: [...attachments.value],
+        timestamp: Date.now()
+      }
+    ];
 
     // 清空当前附件，准备下一条消息
     attachments.value = [];
   }
 
   function handleRemoveFromQueue(id: string) {
-    queuedMessages.value = queuedMessages.value.filter(m => m.id !== id);
+    const s = session.value;
+    if (!s) return;
+    s.queuedMessages.value = s.queuedMessages.value.filter(m => m.id !== id);
   }
 
   async function handleSendNow(id: string) {
-    const index = queuedMessages.value.findIndex(m => m.id === id);
+    const s = session.value;
+    if (!s) return;
+
+    const currentQueue = [...s.queuedMessages.value];
+    const index = currentQueue.findIndex(m => m.id === id);
     if (index === -1) return;
 
     // 移动到队列头部
-    const [msg] = queuedMessages.value.splice(index, 1);
-    queuedMessages.value.unshift(msg);
+    const [msg] = currentQueue.splice(index, 1);
+    currentQueue.unshift(msg);
+    s.queuedMessages.value = currentQueue;
 
     // 如果当前正在忙碌，尝试中断
-    if (isBusy.value && session.value) {
+    if (s.busy.value) {
       // 中断后，isBusy 会变为 false，触发 watcher 处理队列
-      void session.value.interrupt();
+      void s.interrupt();
     } else {
       // 如果空闲，直接处理队列
       void processQueue();
@@ -312,14 +332,18 @@
   }
 
   async function processQueue() {
+    const s = session.value;
     // 确保有会话，且队列不为空，且当前不忙
-    if (!session.value || queuedMessages.value.length === 0 || isBusy.value) return;
+    if (!s || s.queuedMessages.value.length === 0 || s.busy.value) return;
 
-    const msg = queuedMessages.value.shift();
+    const currentQueue = [...s.queuedMessages.value];
+    const msg = currentQueue.shift();
+    s.queuedMessages.value = currentQueue;
+
     if (!msg) return;
 
     try {
-      await session.value.send(msg.content, msg.attachments);
+      await s.send(msg.content, msg.attachments);
     } catch (e) {
       console.error('[ChatPage] failed to send queued message', e);
       // 可选：发送失败是否放回队列？或者提示错误？

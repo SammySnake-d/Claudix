@@ -23,6 +23,7 @@ import type { Session, SelectionRange } from '../core/Session';
 import type { PermissionRequest } from '../core/PermissionRequest';
 import type { BaseTransport } from '../transport/BaseTransport';
 import type { ModelOption } from '../../../shared/messages';
+import type { QueuedMessage } from '../types/queue';
 
 /**
  * useSession 返回类型
@@ -46,6 +47,7 @@ export interface UseSessionReturn {
   modelSelection: Ref<string | undefined>;
   thinkingLevel: Ref<string>;
   todos: Ref<any[]>;
+  queuedMessages: Ref<QueuedMessage[]>;
   worktree: Ref<{ name: string; path: string } | undefined>;
   selection: Ref<SelectionRange | undefined>;
 
@@ -113,6 +115,7 @@ export function useSession(session: Session): UseSessionReturn {
   const modelSelection = useSignal(session.modelSelection);
   const thinkingLevel = useSignal(session.thinkingLevel);
   const todos = useSignal(session.todos);
+  const queuedMessages = useSignal(session.queuedMessages);
   const worktree = useSignal(session.worktree);
   const selection = useSignal(session.selection);
   const usageData = useSignal(session.usageData);
@@ -160,6 +163,7 @@ export function useSession(session: Session): UseSessionReturn {
     modelSelection,
     thinkingLevel,
     todos,
+    queuedMessages,
     worktree,
     selection,
     usageData,

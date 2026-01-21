@@ -7,6 +7,7 @@ import type { PermissionMode } from '@anthropic-ai/claude-agent-sdk';
 import { processAndAttachMessage /*, mergeConsecutiveReadMessages */ } from '../utils/messageUtils';
 import { Message as MessageModel } from '../models/Message';
 import type { Message } from '../models/Message';
+import type { QueuedMessage } from '../types/queue';
 
 export interface SelectionRange {
   filePath: string;
@@ -82,6 +83,7 @@ export class Session {
   readonly modelSelection = signal<string | undefined>(undefined);
   readonly thinkingLevel = signal<string>('default_on');
   readonly todos = signal<any[]>([]);
+  readonly queuedMessages = signal<QueuedMessage[]>([]);
   readonly worktree = signal<{ name: string; path: string } | undefined>(undefined);
   readonly selection = signal<SelectionRange | undefined>(undefined);
   readonly usageData = signal<UsageData>({
