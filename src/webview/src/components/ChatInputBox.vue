@@ -139,7 +139,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, inject, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, inject, onMounted, onUnmounted, watch } from 'vue'
+import { useSignal } from '@gn8/alien-signals-vue'
+import { effect } from 'alien-signals'
 import type { PermissionMode } from '@anthropic-ai/claude-agent-sdk'
 import FileIcon from './FileIcon.vue'
 import ButtonArea from './ButtonArea.vue'
@@ -147,6 +149,7 @@ import type { AttachmentItem } from '../types/attachment'
 import { Dropdown, DropdownItem } from './Dropdown'
 import { RuntimeKey } from '../composables/runtimeContext'
 import { useCompletionDropdown } from '../composables/useCompletionDropdown'
+import { useInputHistory } from '../composables/useInputHistory'
 import { getSlashCommands, commandToDropdownItem } from '../providers/slashCommandProvider'
 import { getFileReferences, fileToDropdownItem } from '../providers/fileReferenceProvider'
 
@@ -208,6 +211,39 @@ const emit = defineEmits<Emits>()
 
 const runtime = inject(RuntimeKey)
 
+// 获取当前会话的 sessionId 用于历史记录隔离
+// 使用 alien-signals effect 监听 sessionId 变化（包括从 undefined 变为实际值）
+const activeSessionRef = runtime ? useSignal(runtime.sessionStore.activeSession) : ref(undefined)
+const sessionIdRef = ref<string | undefined>(undefined)
+
+let effectCleanup: (() => void) | undefined
+
+// 监听 activeSession 变化，设置 effect 监听 sessionId
+watch(
+  () => activeSessionRef.value,
+  (session) => {
+    // 清理之前的 effect
+    effectCleanup?.()
+    effectCleanup = undefined
+
+    if (session) {
+      // 使用 alien-signals effect 监听 sessionId 变化
+      effectCleanup = effect(() => {
+        sessionIdRef.value = session.sessionId()
+      })
+    } else {
+      sessionIdRef.value = undefined
+    }
+  },
+  { immediate: true }
+)
+
+onUnmounted(() => {
+  effectCleanup?.()
+})
+
+const inputHistory = useInputHistory(sessionIdRef)
+
 const content = ref('')
 const isLoading = ref(false)
 const textareaRef = ref<HTMLDivElement | null>(null)
@@ -236,8 +272,9 @@ const slashCompletion = useCompletionDropdown({
         placeCaretAtEnd(textareaRef.value)
       }
 
-      // 触发输入事件
+      // 触发输入事件并同步草稿
       emit('input', updated)
+      inputHistory.setDraft(updated)
     }
   },
   anchorElement: textareaRef
@@ -261,8 +298,9 @@ const fileCompletion = useCompletionDropdown({
         placeCaretAtEnd(textareaRef.value)
       }
 
-      // 触发输入事件
+      // 触发输入事件并同步草稿
       emit('input', updated)
+      inputHistory.setDraft(updated)
     }
   },
   anchorElement: textareaRef
@@ -369,6 +407,7 @@ function handleInput(event: Event) {
 
   content.value = textContent
   emit('input', textContent)
+  inputHistory.setDraft(textContent)
 
   // 评估补全（slash 和 @）
   slashCompletion.evaluateQuery(textContent)
@@ -416,6 +455,41 @@ function autoResizeTextarea() {
   })
 }
 
+// 获取光标在输入框中的偏移位置
+function getCaretOffset(el: HTMLDivElement): number | null {
+  const selection = window.getSelection()
+  if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) {
+    return null
+  }
+  const range = selection.getRangeAt(0)
+  if (!el.contains(range.startContainer)) return null
+  const preRange = range.cloneRange()
+  preRange.selectNodeContents(el)
+  preRange.setEnd(range.startContainer, range.startOffset)
+  return preRange.toString().length
+}
+
+// 判断是否应该处理历史导航（光标在首/尾时）
+function shouldHandleHistoryNavigation(key: 'ArrowUp' | 'ArrowDown'): boolean {
+  const el = textareaRef.value
+  if (!el) return false
+  const offset = getCaretOffset(el)
+  if (offset === null) return false
+  const length = (el.textContent || '').length
+  return key === 'ArrowUp' ? offset === 0 : offset === length
+}
+
+// 应用历史文本到输入框
+function applyHistoryText(text: string) {
+  content.value = text
+  if (textareaRef.value) {
+    textareaRef.value.textContent = text
+    placeCaretAtEnd(textareaRef.value)
+  }
+  emit('input', text)
+  autoResizeTextarea()
+}
+
 function handleKeydown(event: KeyboardEvent) {
   // 优先处理补全菜单的键盘事件
   if (slashCompletion.isOpen.value) {
@@ -427,6 +501,25 @@ function handleKeydown(event: KeyboardEvent) {
   if (fileCompletion.isOpen.value) {
     fileCompletion.handleKeydown(event)
     return
+  }
+
+  // 处理历史导航
+  if (event.key === 'ArrowUp' && shouldHandleHistoryNavigation('ArrowUp')) {
+    const next = inputHistory.movePrevious(content.value)
+    if (next !== null) {
+      event.preventDefault()
+      applyHistoryText(next)
+      return
+    }
+  }
+
+  if (event.key === 'ArrowDown' && shouldHandleHistoryNavigation('ArrowDown')) {
+    const next = inputHistory.moveNext()
+    if (next !== null) {
+      event.preventDefault()
+      applyHistoryText(next)
+      return
+    }
   }
 
   // 其他按键处理
@@ -656,6 +749,7 @@ async function handleDrop(event: DragEvent) {
   }
 
   emit('input', updatedContent)
+  inputHistory.setDraft(updatedContent)
   autoResizeTextarea()
 
   nextTick(() => {
@@ -665,6 +759,9 @@ async function handleDrop(event: DragEvent) {
 
 function handleSubmit() {
   if (!content.value.trim()) return
+
+  // 记录到历史
+  inputHistory.record(content.value)
 
   if (props.conversationWorking) {
     // 对话工作中，添加到队列
@@ -679,6 +776,7 @@ function handleSubmit() {
   if (textareaRef.value) {
     textareaRef.value.textContent = ''
   }
+  inputHistory.setDraft('')
 
   // 等待 DOM 更新后重置输入框高度
   nextTick(() => {
@@ -703,8 +801,9 @@ function handleMention(filePath?: string) {
     placeCaretAtEnd(textareaRef.value)
   }
 
-  // 触发输入事件
+  // 触发输入事件并同步草稿
   emit('input', updatedContent)
+  inputHistory.setDraft(updatedContent)
 
   // 自动聚焦到输入框
   nextTick(() => {
@@ -755,6 +854,7 @@ defineExpose({
     if (!el) {
       // 如果没有 ref，仅更新状态
       content.value = text || ''
+      inputHistory.setDraft(text || '')
       return
     }
 
@@ -780,6 +880,7 @@ defineExpose({
 
     // 更新内部状态（input 事件通常由 execCommand 触发，但为了保险手动同步）
     content.value = el.textContent || ''
+    inputHistory.setDraft(content.value)
 
     autoResizeTextarea()
   },
