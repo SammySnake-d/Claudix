@@ -13,6 +13,7 @@ interface InputHistoryState {
 const STORAGE_PREFIX = 'claudix-input-history:'
 const STORAGE_VERSION = 1
 const MAX_ENTRIES = 100
+const UNSAVED_SESSION_KEY = '__unsaved__'
 
 function buildStorageKey(sessionId: string): string {
   return `${STORAGE_PREFIX}${sessionId}`
@@ -65,6 +66,11 @@ export function useInputHistory(sessionId: Ref<string | undefined>) {
   // 记住最后一个有效的 sessionId，用于 restore 后继续访问历史
   const lastKnownSessionId = ref<string | undefined>(sessionId.value)
   const activeSessionId = ref<string | undefined>(sessionId.value)
+  const draftBySession = new Map<string, string>()
+
+  function resolveDraftKey(nextSessionId: string | undefined): string {
+    return nextSessionId ?? UNSAVED_SESSION_KEY
+  }
 
   function setItems(nextItems: InputHistoryEntry[]) {
     items.value = nextItems
@@ -77,6 +83,20 @@ export function useInputHistory(sessionId: Ref<string | undefined>) {
       saveToStorage(sid, nextItems)
     } else {
       inMemoryItems.value = nextItems
+    }
+  }
+
+  function getDraft(targetSessionId?: string | undefined): string {
+    const key = resolveDraftKey(targetSessionId ?? activeSessionId.value)
+    return draftBySession.get(key) ?? ''
+  }
+
+  function clearDraft(targetSessionId?: string | undefined) {
+    const key = resolveDraftKey(targetSessionId ?? activeSessionId.value)
+    draftBySession.delete(key)
+    if (key === resolveDraftKey(activeSessionId.value)) {
+      draft.value = ''
+      historyIndex.value = -1
     }
   }
 
@@ -113,8 +133,26 @@ export function useInputHistory(sessionId: Ref<string | undefined>) {
   watch(
     sessionId,
     (next, prev) => {
+      const prevKey = resolveDraftKey(prev)
+      draftBySession.set(prevKey, draft.value ?? '')
+      const nextKey = resolveDraftKey(next)
+      if (!prev && next) {
+        const unsaved = draftBySession.get(UNSAVED_SESSION_KEY)
+        if (typeof unsaved === 'string') {
+          const hasNext = draftBySession.has(nextKey)
+          if (!hasNext || unsaved.trim().length > 0) {
+            draftBySession.set(nextKey, unsaved)
+          }
+          draftBySession.delete(UNSAVED_SESSION_KEY)
+        }
+      }
+      draft.value = ''
+      historyIndex.value = -1
       activeSessionId.value = next
       loadForSession(next, prev)
+      const nextDraft = getDraft(next)
+      draft.value = nextDraft
+      historyIndex.value = -1
     },
     { immediate: true }
   )
@@ -151,14 +189,19 @@ export function useInputHistory(sessionId: Ref<string | undefined>) {
   }
 
   function setDraft(text: string) {
-    draft.value = text ?? ''
+    const next = text ?? ''
+    draft.value = next
     historyIndex.value = -1
+    const key = resolveDraftKey(activeSessionId.value)
+    draftBySession.set(key, next)
   }
 
   return {
     record,
     movePrevious,
     moveNext,
-    setDraft
+    setDraft,
+    getDraft,
+    clearDraft
   }
 }

@@ -248,6 +248,29 @@ const content = ref('')
 const isLoading = ref(false)
 const textareaRef = ref<HTMLDivElement | null>(null)
 
+watch(
+  () => sessionIdRef.value,
+  (next) => {
+    content.value = ''
+    if (textareaRef.value) {
+      textareaRef.value.textContent = ''
+    }
+    const nextDraft = inputHistory.getDraft(next)
+    if (nextDraft) {
+      content.value = nextDraft
+      if (textareaRef.value) {
+        textareaRef.value.textContent = nextDraft
+        placeCaretAtEnd(textareaRef.value)
+      }
+    }
+    emit('input', nextDraft)
+    nextTick(() => {
+      autoResizeTextarea()
+    })
+  },
+  { immediate: true }
+)
+
 const isSubmitDisabled = computed(() => {
   return !content.value.trim() || isLoading.value
 })

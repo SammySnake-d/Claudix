@@ -364,11 +364,23 @@
   async function handleRestoreCheckpoint(messageIndex: number) {
     const s = session.value;
     if (!s) return;
+    const restoreSessionId = s.sessionId.value;
 
     try {
       const raw = messages.value?.[messageIndex];
       const draft = extractDraftFromMessage(raw);
       await s.restoreCheckpoint(messageIndex);
+      const currentSession = session.value;
+      if (!currentSession || currentSession !== s) {
+        return;
+      }
+      if (
+        restoreSessionId &&
+        currentSession.sessionId.value &&
+        currentSession.sessionId.value !== restoreSessionId
+      ) {
+        return;
+      }
       // Put the restored user input back into the input box (Cursor-like behavior)
       if (chatInputRef.value) {
         chatInputRef.value.setContent?.(draft.text || '');

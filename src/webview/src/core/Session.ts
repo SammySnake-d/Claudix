@@ -216,7 +216,7 @@ export class Session {
       'warning',
       ['Restore', 'Cancel']
     );
-    if (button && button !== 'Restore') {
+    if (button !== 'Restore') {
       return;
     }
 
