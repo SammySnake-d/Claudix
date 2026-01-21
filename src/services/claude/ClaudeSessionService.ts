@@ -17,6 +17,7 @@ import * as os from 'os';
 import * as crypto from 'crypto';
 import { createDecorator } from '../../di/instantiation';
 import { ILogService } from '../logService';
+import { restoreWorkspaceFilesFromSnapshots } from './workspaceSnapshots';
 
 export const IClaudeSessionService = createDecorator<IClaudeSessionService>('claudeSessionService');
 
@@ -406,6 +407,8 @@ export class ClaudeSessionService implements IClaudeSessionService {
                 filePath = path.join(projectDir, `${sessionIdOrPath}.jsonl`);
             }
 
+            const sessionId = validateSessionId(path.basename(filePath, ".jsonl")) ?? sessionIdOrPath;
+
             const messages = await readJSONL(filePath);
             if (messages.length === 0) {
                 return [];
@@ -458,11 +461,48 @@ export class ClaudeSessionService implements IClaudeSessionService {
                 }
             }
 
+            // Rewind workspace files for tool calls that happened after the checkpoint.
+            try {
+                const removed = cutIndex + 1 < messages.length ? messages.slice(cutIndex + 1) : [];
+                const removedToolUseIds: string[] = [];
+
+                for (const msg of removed) {
+                    if (msg.type !== 'assistant') continue;
+                    const content = msg.message?.content;
+                    if (!Array.isArray(content)) continue;
+
+                    for (const block of content) {
+                        if (!block || block.type !== 'tool_use') continue;
+                        const name = block.name;
+                        if (name !== 'Write' && name !== 'Edit' && name !== 'MultiEdit' && name !== 'NotebookEdit') {
+                            continue;
+                        }
+                        const id = block.id;
+                        if (typeof id === 'string' && id) {
+                            removedToolUseIds.push(id);
+                        }
+                    }
+                }
+
+                if (removedToolUseIds.length > 0) {
+                    const result = await restoreWorkspaceFilesFromSnapshots({
+                        cwd,
+                        sessionId,
+                        // Apply in reverse chronological order.
+                        toolUseIds: removedToolUseIds.reverse(),
+                    });
+                    this.logService.info(
+                        `[ClaudeSessionService] Workspace rewind applied. restored=${result.restored} missing=${result.missing} errors=${result.errors}`
+                    );
+                }
+            } catch (e) {
+                this.logService.warn?.(`[ClaudeSessionService] Workspace rewind failed: ${e instanceof Error ? e.message : String(e)}`);
+            }
+
             let truncated = cutIndex >= 0 ? messages.slice(0, cutIndex + 1) : [];
 
             // Avoid writing a completely empty file (which would make the session disappear in listSessions()).
             if (truncated.length === 0) {
-                const sessionId = validateSessionId(path.basename(filePath, ".jsonl")) ?? sessionIdOrPath;
                 truncated = [
                     {
                         uuid: crypto.randomUUID(),

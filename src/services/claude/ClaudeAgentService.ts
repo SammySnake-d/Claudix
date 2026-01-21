@@ -29,6 +29,8 @@ import { AsyncStream, ITransport } from './transport';
 import { HandlerContext } from './handlers/types';
 import { IWebViewService } from '../webViewService';
 import { IAceToolService } from '../AceToolService';
+import * as path from 'path';
+import { recordWorkspaceSnapshotForTool } from './workspaceSnapshots';
 
 // 消息类型导入
 import type {
@@ -212,6 +214,9 @@ export class ClaudeAgentService implements IClaudeAgentService {
     // Thinking Level 配置
     private thinkingLevel: string = 'default_on';
 
+    private readonly channelSessionIds = new Map<string, string>();
+    private readonly recordedToolUseSnapshots = new Set<string>(); // `${sessionId}:${toolUseId}`
+
     constructor(
         @ILogService private readonly logService: ILogService,
         @IConfigurationService private readonly configService: IConfigurationService,
@@ -366,6 +371,10 @@ export class ClaudeAgentService implements IClaudeAgentService {
             throw new Error(`Channel already exists: ${channelId}`);
         }
 
+        if (resume) {
+            this.channelSessionIds.set(channelId, resume);
+        }
+
         try {
             // 1. 创建输入流
             this.logService.info('📝 步骤 1: 创建输入流');
@@ -416,12 +425,26 @@ export class ClaudeAgentService implements IClaudeAgentService {
                         messageCount++;
                         this.logService.info(`  ← 收到消息 #${messageCount}: ${message.type}`);
 
+                        // Track the Claude session id for this channel.
+                        if (message.type === 'system' && typeof (message as any).session_id === 'string') {
+                            this.channelSessionIds.set(channelId, (message as any).session_id);
+                        }
+
                         this.transport!.send({
                             type: "io_message",
                             channelId,
                             message,
                             done: false
                         });
+
+                        // Capture pre-edit snapshots for file-mutating tools so restoreCheckpoint can rewind workspace state.
+                        try {
+                            await this.maybeRecordWorkspaceSnapshots(channelId, cwd, message);
+                        } catch (error) {
+                            this.logService.warn?.(
+                                `[ClaudeAgentService] Failed to record workspace snapshot: ${error instanceof Error ? error.message : String(error)}`
+                            );
+                        }
                     }
 
                     // 正常结束
@@ -480,6 +503,8 @@ export class ClaudeAgentService implements IClaudeAgentService {
      */
     closeChannel(channelId: string, sendNotification: boolean, error?: string): void {
         this.logService.info(`[ClaudeAgentService] 关闭 Channel: ${channelId}`);
+
+        this.channelSessionIds.delete(channelId);
 
         // 1. 发送关闭通知
         if (sendNotification && this.transport) {
@@ -909,5 +934,65 @@ export class ClaudeAgentService implements IClaudeAgentService {
         await this.configService.updateValue('claudix.selectedModel', model);
 
         this.logService.info(`[setModel] Set channel ${channelId} to model: ${model}`);
+    }
+
+    private async maybeRecordWorkspaceSnapshots(
+        channelId: string,
+        cwd: string,
+        message: SDKMessage | SDKUserMessage
+    ): Promise<void> {
+        const sessionId = this.channelSessionIds.get(channelId);
+        if (!sessionId) {
+            return;
+        }
+
+        if (message.type !== 'assistant') {
+            return;
+        }
+
+        const blocks = (message as any).message?.content;
+        if (!Array.isArray(blocks)) {
+            return;
+        }
+
+        for (const block of blocks) {
+            if (!block || block.type !== 'tool_use') {
+                continue;
+            }
+
+            const toolName = block.name;
+            if (toolName !== 'Write' && toolName !== 'Edit' && toolName !== 'MultiEdit' && toolName !== 'NotebookEdit') {
+                continue;
+            }
+
+            const toolUseId = block.id;
+            if (typeof toolUseId !== 'string' || !toolUseId) {
+                continue;
+            }
+
+            const input = block.input ?? {};
+            const rawFilePath =
+                toolName === 'NotebookEdit' ? (input.notebook_path as unknown) : (input.file_path as unknown);
+
+            if (typeof rawFilePath !== 'string' || !rawFilePath) {
+                continue;
+            }
+
+            const filePath = path.isAbsolute(rawFilePath) ? rawFilePath : path.join(cwd, rawFilePath);
+
+            const key = `${sessionId}:${toolUseId}`;
+            if (this.recordedToolUseSnapshots.has(key)) {
+                continue;
+            }
+            this.recordedToolUseSnapshots.add(key);
+
+            await recordWorkspaceSnapshotForTool({
+                cwd,
+                sessionId,
+                toolUseId,
+                toolName,
+                filePath,
+            });
+        }
     }
 }
