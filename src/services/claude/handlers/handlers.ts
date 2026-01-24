@@ -759,16 +759,37 @@ async function loadConfig(context: HandlerContext): Promise<any> {
 
     // 1. Get user configured env vars for dynamic mapping
     const envVars = context.configService.getValue<Array<{ name: string; value: string }>>('claudix.environmentVariables') || [];
+
+    // Try to read .claude/settings.json from workspace
+    let projectSettings: Record<string, string> = {};
+    try {
+        const workspacePath = context.workspaceService.getDefaultWorkspaceFolder()?.uri.fsPath || process.cwd();
+        const settingsPath = path.join(workspacePath, '.claude', 'settings.json');
+        if (fs.existsSync(settingsPath)) {
+            const content = fs.readFileSync(settingsPath, 'utf8');
+            projectSettings = JSON.parse(content);
+        }
+    } catch (e) {
+        // ignore errors reading project settings
+    }
+
     const MODEL_NAME_MAP: Record<string, string> = {};
 
     const addToMap = (key: string, name: string) => {
-        // Try VS Code config first
+        // 1. Try .claude/settings.json (Project level)
+        if (projectSettings[key]) {
+            MODEL_NAME_MAP[projectSettings[key]] = name;
+            return;
+        }
+
+        // 2. Try VS Code config (User level)
         const item = envVars.find(v => v.name === key);
         if (item && item.value) {
             MODEL_NAME_MAP[item.value] = name;
             return;
         }
-        // Try process.env as fallback (if set in .claude/settings.json and propagated)
+
+        // 3. Try process.env as fallback
         if (process.env[key]) {
             MODEL_NAME_MAP[process.env[key]!] = name;
         }
@@ -778,7 +799,7 @@ async function loadConfig(context: HandlerContext): Promise<any> {
     addToMap('ANTHROPIC_DEFAULT_OPUS_MODEL', 'Opus');
     addToMap('ANTHROPIC_DEFAULT_HAIKU_MODEL', 'Haiku');
 
-    const models = rawModels.map((m: any) => {
+    let models = rawModels.map((m: any) => {
         if (!m.value) return m;
 
         // 1. Priority: User Configured Mapping (Exact ID match)
@@ -800,6 +821,18 @@ async function loadConfig(context: HandlerContext): Promise<any> {
 
         return m;
     });
+
+    // Ensure Default option exists
+    if (!models.some((m: any) => m.value === 'default')) {
+        models = [
+            {
+                value: 'default',
+                displayName: 'Default (recommended)',
+                description: 'Automatically switches models based on task complexity'
+            },
+            ...models
+        ];
+    }
 
     const config = {
         slashCommands: await (query as any).supportedCommands?.() || [],
