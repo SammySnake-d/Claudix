@@ -755,9 +755,88 @@ async function loadConfig(context: HandlerContext): Promise<any> {
 
     inputStream.done();
 
+    const rawModels = await (query as any).supportedModels?.() || [];
+
+    // 1. Get user configured env vars for dynamic mapping
+    const envVars = context.configService.getValue<Array<{ name: string; value: string }>>('claudix.environmentVariables') || [];
+
+    // Try to read .claude/settings.json from workspace
+    let projectSettings: Record<string, string> = {};
+    try {
+        const workspacePath = context.workspaceService.getDefaultWorkspaceFolder()?.uri.fsPath || process.cwd();
+        const settingsPath = path.join(workspacePath, '.claude', 'settings.json');
+        if (fs.existsSync(settingsPath)) {
+            const content = fs.readFileSync(settingsPath, 'utf8');
+            projectSettings = JSON.parse(content);
+        }
+    } catch (e) {
+        // ignore errors reading project settings
+    }
+
+    const MODEL_NAME_MAP: Record<string, string> = {};
+
+    const addToMap = (key: string, name: string) => {
+        // 1. Try .claude/settings.json (Project level)
+        if (projectSettings[key]) {
+            MODEL_NAME_MAP[projectSettings[key]] = name;
+            return;
+        }
+
+        // 2. Try VS Code config (User level)
+        const item = envVars.find(v => v.name === key);
+        if (item && item.value) {
+            MODEL_NAME_MAP[item.value] = name;
+            return;
+        }
+
+        // 3. Try process.env as fallback
+        if (process.env[key]) {
+            MODEL_NAME_MAP[process.env[key]!] = name;
+        }
+    };
+
+    addToMap('ANTHROPIC_DEFAULT_SONNET_MODEL', 'Sonnet');
+    addToMap('ANTHROPIC_DEFAULT_OPUS_MODEL', 'Opus');
+    addToMap('ANTHROPIC_DEFAULT_HAIKU_MODEL', 'Haiku');
+
+    let models = rawModels.map((m: any) => {
+        if (!m.value) return m;
+
+        // 1. Priority: User Configured Mapping (Exact ID match)
+        if (MODEL_NAME_MAP[m.value]) {
+            return { ...m, displayName: MODEL_NAME_MAP[m.value] };
+        }
+
+        // 2. Priority: Heuristic for 4.5 models (handling dynamic dates like 20250929, 2026...)
+        // Matches: claude-sonnet-4-5*, claude-opus-4-5*, claude-haiku-4-5*
+        if (m.value.includes('sonnet-4-5')) {
+            return { ...m, displayName: 'Sonnet 4.5' };
+        }
+        if (m.value.includes('opus-4-5')) {
+            return { ...m, displayName: 'Opus 4.5' };
+        }
+        if (m.value.includes('haiku-4-5')) {
+            return { ...m, displayName: 'Haiku 4.5' };
+        }
+
+        return m;
+    });
+
+    // Ensure Default option exists
+    if (!models.some((m: any) => m.value === 'default')) {
+        models = [
+            {
+                value: 'default',
+                displayName: 'Default (recommended)',
+                description: 'Automatically switches models based on task complexity'
+            },
+            ...models
+        ];
+    }
+
     const config = {
         slashCommands: await (query as any).supportedCommands?.() || [],
-        models: await (query as any).supportedModels?.() || [],
+        models,
         accountInfo: await (query as any).accountInfo?.() || null
     };
 
