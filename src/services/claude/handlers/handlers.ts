@@ -756,16 +756,42 @@ async function loadConfig(context: HandlerContext): Promise<any> {
     inputStream.done();
 
     const rawModels = await (query as any).supportedModels?.() || [];
-    const MODEL_NAME_MAP: Record<string, string> = {
-        'claude-sonnet-4-5-20250929': 'Sonnet 4.5',
-        'claude-opus-4-5-20251101': 'Opus 4.5',
-        'claude-haiku-4-5-20251001': 'Haiku 4.5',
+
+    // 1. Get user configured env vars for dynamic mapping
+    const envVars = context.configService.getValue<Array<{ name: string; value: string }>>('claudix.environmentVariables') || [];
+    const MODEL_NAME_MAP: Record<string, string> = {};
+
+    const addToMap = (key: string, name: string) => {
+        const item = envVars.find(v => v.name === key);
+        if (item && item.value) {
+            MODEL_NAME_MAP[item.value] = name;
+        }
     };
 
+    addToMap('ANTHROPIC_DEFAULT_SONNET_MODEL', 'Sonnet');
+    addToMap('ANTHROPIC_DEFAULT_OPUS_MODEL', 'Opus');
+    addToMap('ANTHROPIC_DEFAULT_HAIKU_MODEL', 'Haiku');
+
     const models = rawModels.map((m: any) => {
-        if (m.value && MODEL_NAME_MAP[m.value]) {
+        if (!m.value) return m;
+
+        // 1. Priority: User Configured Mapping
+        if (MODEL_NAME_MAP[m.value]) {
             return { ...m, displayName: MODEL_NAME_MAP[m.value] };
         }
+
+        // 2. Priority: Heuristic for 4.5 models (handling dynamic dates)
+        // Matches: claude-sonnet-4-5-*, claude-opus-4-5-*, claude-haiku-4-5-*
+        if (m.value.includes('sonnet-4-5')) {
+            return { ...m, displayName: 'Sonnet 4.5' };
+        }
+        if (m.value.includes('opus-4-5')) {
+            return { ...m, displayName: 'Opus 4.5' };
+        }
+        if (m.value.includes('haiku-4-5')) {
+            return { ...m, displayName: 'Haiku 4.5' };
+        }
+
         return m;
     });
 
