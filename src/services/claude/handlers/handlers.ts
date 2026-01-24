@@ -762,9 +762,15 @@ async function loadConfig(context: HandlerContext): Promise<any> {
     const MODEL_NAME_MAP: Record<string, string> = {};
 
     const addToMap = (key: string, name: string) => {
+        // Try VS Code config first
         const item = envVars.find(v => v.name === key);
         if (item && item.value) {
             MODEL_NAME_MAP[item.value] = name;
+            return;
+        }
+        // Try process.env as fallback (if set in .claude/settings.json and propagated)
+        if (process.env[key]) {
+            MODEL_NAME_MAP[process.env[key]!] = name;
         }
     };
 
@@ -775,13 +781,13 @@ async function loadConfig(context: HandlerContext): Promise<any> {
     const models = rawModels.map((m: any) => {
         if (!m.value) return m;
 
-        // 1. Priority: User Configured Mapping
+        // 1. Priority: User Configured Mapping (Exact ID match)
         if (MODEL_NAME_MAP[m.value]) {
             return { ...m, displayName: MODEL_NAME_MAP[m.value] };
         }
 
-        // 2. Priority: Heuristic for 4.5 models (handling dynamic dates)
-        // Matches: claude-sonnet-4-5-*, claude-opus-4-5-*, claude-haiku-4-5-*
+        // 2. Priority: Heuristic for 4.5 models (handling dynamic dates like 20250929, 2026...)
+        // Matches: claude-sonnet-4-5*, claude-opus-4-5*, claude-haiku-4-5*
         if (m.value.includes('sonnet-4-5')) {
             return { ...m, displayName: 'Sonnet 4.5' };
         }
